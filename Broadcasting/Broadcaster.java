@@ -63,7 +63,6 @@ public strictfp class Broadcaster {
             enemyArchonCount = rc.readBroadcastInt(ARCHON_COUNT_CHANNEL);
             if (enemyArchonCount > MAX_ARCHONS) enemyArchonCount = MAX_ARCHONS;
         }
-        System.out.println("enemy archon count " + enemyArchonCount);
         for (int i = 0; i < enemyArchonCount; ++i) {
             archonLocations[i].robotId = rc.readBroadcastInt(ARCHON_FIRST_CHANNEL + 3 * i);
             archonLocations[i].location = new MapLocation(
