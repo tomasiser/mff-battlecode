@@ -18,6 +18,12 @@ static Broadcaster broadcaster;
         broadcaster = new Broadcaster(rcon);
 ```
 
+How do I update my broadcaster?
+
+```java
+broadcaster.refresh(); // do this at the beginning of each round! it's a cheap command!
+```
+
 How to report that I found an enemy Archon?
 
 ```java
