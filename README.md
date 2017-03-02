@@ -18,7 +18,7 @@ static Broadcaster broadcaster;
         broadcaster = new Broadcaster(rcon);
 ```
 
-How to report that I found an enemy archon?
+How to report that I found an enemy Archon?
 
 ```java
 broadcaster.reportEnemyArchon(archonRobotId, location);
@@ -34,4 +34,10 @@ How to find where the nearest situation is?
 
 ```java
 MapLocation whereToGo = broadcaster.findNearestAction();
+```
+
+How do I report that the enemy Archon has died?
+
+```java
+broadcaster.reportEnemyArchonDied(archonRobotId);
 ```
