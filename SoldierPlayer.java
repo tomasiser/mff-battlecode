@@ -1,12 +1,18 @@
 package KSTTForTheWin;
+import KSTTForTheWin.Broadcasting.Broadcaster;
 import battlecode.common.*;
 
 public strictfp class SoldierPlayer {
 
     @SuppressWarnings("unused")
 
-	static void runSoldier(RobotController rc) throws GameActionException {
+    static Broadcaster broadcaster;
+    static RobotController rc;
+
+	static void runSoldier(RobotController rcon) throws GameActionException {
         System.out.println("I'm a KSTT soldier!");
+        rc = rcon;
+        broadcaster = new Broadcaster(rc);
         Team enemy = rc.getTeam().opponent();
 
         // The code you want your robot to perform every round should be in this loop
@@ -26,6 +32,7 @@ public strictfp class SoldierPlayer {
                         // ...Then fire a bullet in the direction of the enemy.
                         rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
                     }
+                    broadcaster.reportHelpNeeded();
                 }
 
                 // Move randomly
