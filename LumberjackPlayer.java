@@ -32,9 +32,18 @@ public strictfp class LumberjackPlayer {
                         Direction toEnemy = myLocation.directionTo(enemyLocation);
 
                         SharedUtils.tryMove(rc, toEnemy);
-                    } else {
+                       
+                    } 
+                    //try to chop trees
+                    else {
+                    	TreeInfo[] trees = rc.senseNearbyTrees(1.9F, Team.NEUTRAL);
+                    	if (trees.length > 0) {
+                    		rc.shake(trees[0].ID);
+                    		rc.chop(trees[0].ID);
+                    	}
                         // Move Randomly
-                        SharedUtils.tryMove(rc, SharedUtils.randomDirection());
+                    	else
+                    		SharedUtils.tryMove(rc, SharedUtils.randomDirection());
                     }
                 }
 
