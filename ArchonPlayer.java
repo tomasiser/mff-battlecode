@@ -9,6 +9,8 @@ public strictfp class ArchonPlayer {
     static Broadcaster broadcaster;
     static RobotController rc;
 
+    static boolean mainArchon = true;
+
     static void runArchon(RobotController rcon) throws GameActionException {
         System.out.println("I'm a KSTT archon!");
 
@@ -21,11 +23,26 @@ public strictfp class ArchonPlayer {
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
 
-                if (rc.getRoundNum() <= 1) {
-                    broadcaster.reportEnemyInitialArchons(rc.getInitialArchonLocations(rc.getTeam().opponent()));
+                int roundNum = rc.getRoundNum();
+                MapLocation myLocation = rc.getLocation();
+
+                if (roundNum <= 1) {
+                    MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam().opponent());
+                    broadcaster.reportEnemyInitialArchons(archonLocations);
+                    for (MapLocation loc : archonLocations) {
+                        if (loc.y > myLocation.y + 0.1f) { mainArchon = false; break; }
+                        if (loc.y > myLocation.y - 0.1f && loc.x < myLocation.x - 0.1f) { mainArchon = false; break; }
+                    }
+                    if (mainArchon) {
+                        System.out.println("Archon " + rc.getID() + " is main!");
+                    }
                 } else {
                     broadcaster.refresh();
                     broadcaster.showDebugCircles();
+                }
+
+                if (mainArchon && roundNum % 50 == 0) {
+                    buyVictoryPointsIfNeeded();
                 }
 
                 // Generate a random direction
@@ -39,9 +56,6 @@ public strictfp class ArchonPlayer {
                 // Move randomly
                 SharedUtils.tryMove(rc, SharedUtils.randomDirection());
 
-                // Broadcast archon's location for other robots on the team to know
-                MapLocation myLocation = rc.getLocation();
-
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
@@ -50,5 +64,25 @@ public strictfp class ArchonPlayer {
                 e.printStackTrace();
             }
         }
+    }
+
+    static void buyVictoryPointsIfNeeded() throws GameActionException {
+        int myVP = rc.getTeamVictoryPoints();
+        int enemyVP = rc.getOpponentVictoryPoints();
+        float bullets = rc.getTeamBullets();
+        float victoryPointCost = rc.getVictoryPointCost();
+
+        if (!shouldBuyVictoryPoints(myVP, enemyVP, bullets)) return;
+
+        float bulletsToDonate = bullets * 0.3f;
+        bulletsToDonate = (float)Math.ceil(bulletsToDonate / victoryPointCost) * victoryPointCost;
+
+        rc.donate(bulletsToDonate);
+    }
+
+    static boolean shouldBuyVictoryPoints(int myVP, int enemyVP, float bullets) {
+        return bullets > 300f && (
+            (myVP - 20 < enemyVP) || bullets > 3000f
+        );
     }
 }
