@@ -96,5 +96,33 @@ public strictfp class SharedUtils {
 
         return (perpendicularDist <= rc.getType().bodyRadius);
     }
+
+    static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
+    {
+        MapLocation myLocation = rc.getLocation();
+        Direction relativeDirection = bullet.getLocation().directionTo(myLocation);
+        Direction bulletDirection = bullet.getDir();
+        Direction candidate;
+        if(relativeDirection.radiansBetween(bulletDirection) > 0)
+            candidate = relativeDirection.rotateRightDegrees(90);
+        else
+            candidate = relativeDirection.rotateLeftDegrees(90);
+        return candidate;
+    }
+
+    static boolean robotIsDangerous(RobotInfo info)
+    {
+        switch (info.getType()) {
+            case ARCHON:
+            case GARDENER:
+            case SCOUT:
+                return false;
+            case SOLDIER:
+            case TANK:
+            case LUMBERJACK:
+                return true;
+        }
+        return false;
+    }
     
 }
