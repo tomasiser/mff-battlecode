@@ -94,6 +94,7 @@ public strictfp class Broadcaster {
                 if (archonLocations[i].robotId == -1) rc.broadcastInt(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i, archonRobotId);
                 rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1, location.x);
                 rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 2, location.y);
+                return;
             }
         }
     }
