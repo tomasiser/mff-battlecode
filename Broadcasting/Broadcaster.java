@@ -32,9 +32,10 @@ public strictfp class Broadcaster {
     static final int MAX_ARCHONS = 3;
     static final int MAX_HELP_NEEDED = 2;
 
-    static final int ARCHON_COUNT_CHANNEL = 0;
+    static final int ARCHON_LOC_LEN = 3;
     static final int ARCHON_FIRST_CHANNEL = 1;
-    static final int HELP_NEEDED_FIRST_CHANNEL = MAX_ARCHONS * 3;
+    static final int HELP_NEEDED_FIRST_CHANNEL = MAX_ARCHONS * ARCHON_LOC_LEN;
+    static final int ARCHON_COUNT_CHANNEL = 0;
 
     RobotController rc;
 
@@ -64,10 +65,10 @@ public strictfp class Broadcaster {
             if (enemyArchonCount > MAX_ARCHONS) enemyArchonCount = MAX_ARCHONS;
         }
         for (int i = 0; i < enemyArchonCount; ++i) {
-            archonLocations[i].robotId = rc.readBroadcastInt(ARCHON_FIRST_CHANNEL + 3 * i);
+            archonLocations[i].robotId = rc.readBroadcastInt(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i);
             archonLocations[i].location = new MapLocation(
-                rc.readBroadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 1),
-                rc.readBroadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 2)
+                rc.readBroadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1),
+                rc.readBroadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 2)
             );
         }
     }
@@ -80,9 +81,9 @@ public strictfp class Broadcaster {
     public void reportEnemyInitialArchons(MapLocation[] locations) throws GameActionException {
         reportEnemyArchonCount(locations.length);
         for (int i = 0; i < enemyArchonCount; ++i) {
-            rc.broadcastInt(ARCHON_FIRST_CHANNEL + 3 * i, -1);
-            rc.broadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 1, locations[i].x);
-            rc.broadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 2, locations[i].y);
+            rc.broadcastInt(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i, -1);
+            rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1, locations[i].x);
+            rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 2, locations[i].y);
         }
     }
 
@@ -90,9 +91,9 @@ public strictfp class Broadcaster {
         for (int i = 0; i < enemyArchonCount; ++i) {
             if (archonLocations[i].robotId == -1 || archonLocations[i].robotId == archonRobotId) {
                 if (archonLocations[i].robotId == archonRobotId && location.isWithinDistance(archonLocations[i].location, 2.f)) return;
-                if (archonLocations[i].robotId == -1) rc.broadcastInt(ARCHON_FIRST_CHANNEL + 3 * i, archonRobotId);
-                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 1, location.x);
-                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 2, location.y);
+                if (archonLocations[i].robotId == -1) rc.broadcastInt(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i, archonRobotId);
+                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1, location.x);
+                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 2, location.y);
             }
         }
     }
@@ -100,19 +101,19 @@ public strictfp class Broadcaster {
     public void reportEnemyArchonDied(int archonRobotId) throws GameActionException {
         for (int i = 0; i < enemyArchonCount; ++i) {
             if (archonLocations[i].robotId == archonRobotId) {
-                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + 3 * i + 1, -500f);
+                rc.broadcastFloat(ARCHON_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1, -500f);
             }
         }
     }
 
     public void refreshHelpNeededLocations() throws GameActionException {
         for (int i = 0; i < MAX_HELP_NEEDED; ++i) {
-            int roundNumber = rc.readBroadcastInt(HELP_NEEDED_FIRST_CHANNEL + 3 * i);
+            int roundNumber = rc.readBroadcastInt(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * i);
             if (helpNeededLocations[i].roundNumber == roundNumber) return;
             helpNeededLocations[i].roundNumber = roundNumber;
             helpNeededLocations[i].location = new MapLocation(
-                rc.readBroadcastFloat(HELP_NEEDED_FIRST_CHANNEL + 3 * i + 1),
-                rc.readBroadcastFloat(HELP_NEEDED_FIRST_CHANNEL + 3 * i + 2)
+                rc.readBroadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 1),
+                rc.readBroadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * i + 2)
             );
         }
     }
@@ -129,9 +130,9 @@ public strictfp class Broadcaster {
                 lowestRoundNumber = helpNeededLocations[i].roundNumber;
             }
         }
-        rc.broadcastInt(HELP_NEEDED_FIRST_CHANNEL + 3 * oldestIndex, roundNumber);
-        rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + 3 * oldestIndex + 1, location.x);
-        rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + 3 * oldestIndex + 2, location.y);
+        rc.broadcastInt(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex, roundNumber);
+        rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex + 1, location.x);
+        rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex + 2, location.y);
     }
 
     public MapLocation findNearestAction() {
