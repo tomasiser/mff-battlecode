@@ -24,8 +24,8 @@ public strictfp abstract class BasicCombatStrategy {
     private RobotInfo lastTarget;
     private MapLocation me;
 
-    // pseudo constants
-    private float GOAL_RADIUS_SQ = 200f; // @todo what is the scale?
+    // pseudo constant
+    private float VERY_CLOSE_SQ = 20f;
 
     // communication with the team
     Broadcaster broadcaster;
@@ -68,7 +68,6 @@ public strictfp abstract class BasicCombatStrategy {
                 // there is nothing to do... - no known positions of enemies and nobody needs help
                 // so return back home
                 setGoal(chooseRandomGoal());
-                System.out.println("Random goal was chosen.");
                 hasOnlyTmpGoal = true;
             } else {
                 hasOnlyTmpGoal = false;
@@ -88,10 +87,8 @@ public strictfp abstract class BasicCombatStrategy {
 
         // fight the enemies if they are nearby
         if (shouldFight()) {
-            System.out.println("FIGHT!");
             RobotInfo target = chooseBestShootingTarget();
             if (target != null) {
-                System.out.println("TARGET ACQUIRED!");
                 boolean burst = false; // @todo check if there are multiple enemies in that direction
                 shootAt(target, burst);
             }
@@ -99,7 +96,6 @@ public strictfp abstract class BasicCombatStrategy {
 
         // even if I am fighting, I might not go directly towards the enemy, but rather flee for life!
         if (shouldFlee()) {
-            System.out.println("Run away!!");
             currentGoal = safeLocation;
 
             try {
@@ -154,7 +150,7 @@ public strictfp abstract class BasicCombatStrategy {
                     broadcaster.reportEnemyArchon(robot.getID(), robot.getLocation());
                 } catch (GameActionException e) {
                     // no idea what to do.. so just a silent error
-                    System.out.println("Soldier " + rc.getID() + " - cannot report the position of the archon " + robot.getID());
+                    System.out.println("Cannot report the position of the archon " + robot.getID());
                 }
 
                 setGoal(robot.getLocation()); // just switch the goal to the archon I found
@@ -185,22 +181,20 @@ public strictfp abstract class BasicCombatStrategy {
      * @return Whether the unit reached the goal or not.
      */
     private boolean hasReachedGoal() {
-        System.out.println("hasReachedGoal?? :: Has goal?? -> " + (hasGoal() ? "yes" : "no"));
         if (hasGoal() && isVeryClose(goal)) {
-            System.out.println("Goal was reached");
             setGoal(null);
-            System.out.println("hasReachedGoal?? :: HAD goal, now has goal?? -> " + (hasGoal() ? "yes" : "no"));
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     /**
      * Check if the location is close to me.
      * @return The location is within reach
      */
-    private boolean isVeryClose(MapLocation loc) {
-        return loc.distanceSquaredTo(me) < GOAL_RADIUS_SQ;
+    protected boolean isVeryClose(MapLocation loc) {
+        return loc.distanceSquaredTo(me) < VERY_CLOSE_SQ;
     }
 
     /**

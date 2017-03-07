@@ -20,7 +20,7 @@ public class DefenderCombatStrategy extends BasicCombatStrategy {
     @Override
     protected boolean chooseGoal() {
         MapLocation loc = broadcaster.findNearestHelp();
-        if (loc != null) {
+        if (loc != null && !isVeryClose(loc)) {
             setGoal(loc);
             return true;
         }

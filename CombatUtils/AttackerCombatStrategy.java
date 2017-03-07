@@ -24,12 +24,12 @@ public class AttackerCombatStrategy extends BasicCombatStrategy {
     @Override
     protected boolean chooseGoal() {
         MapLocation loc = broadcaster.findNearestArchon();
-        if (loc == null) {
+        if (loc == null || isVeryClose(loc)) {
             // even though attacking is preferred, now there is a friend I must help!
             loc = broadcaster.findNearestHelp();
         }
 
-        if (loc != null) {
+        if (loc != null && !isVeryClose(loc)) {
             setGoal(loc);
             return true;
         }
