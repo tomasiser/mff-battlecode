@@ -27,8 +27,9 @@ public strictfp class ArchonPlayer {
                 MapLocation myLocation = rc.getLocation();
 
                 if (roundNum <= 1) {
-                    MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam().opponent());
-                    broadcaster.reportEnemyInitialArchons(archonLocations);
+                    MapLocation[] enemyArchonLocations = rc.getInitialArchonLocations(rc.getTeam().opponent());
+                    broadcaster.reportEnemyInitialArchons(enemyArchonLocations);
+                    MapLocation[] archonLocations = rc.getInitialArchonLocations(rc.getTeam());
                     for (MapLocation loc : archonLocations) {
                         if (loc.y > myLocation.y + 0.1f) { mainArchon = false; break; }
                         if (loc.y > myLocation.y - 0.1f && loc.x < myLocation.x - 0.1f) { mainArchon = false; break; }
