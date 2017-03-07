@@ -202,8 +202,7 @@ public strictfp abstract class BasicCombatStrategy {
      * @return New goal
      */
     private MapLocation chooseRandomGoal() {
-        // @todo make this somehow smart..
-        return null; // do nothing
+        return broadcaster.randomArchonLocation();
     }
 
     /**
@@ -335,7 +334,7 @@ public strictfp abstract class BasicCombatStrategy {
      * Choose a direction in which the unit should move to reach the goal.
      * @return The next spot where the unit wants to step.
      */
-    private void moveTowardsAGoal(MapLocation goal) {
+    protected void moveTowardsAGoal(MapLocation goal) {
         MapLocation nextStep = goal;
 
         // @todo: perform local search (DFS) with some reasonable stack of crossroads for backtracking
@@ -398,7 +397,7 @@ public strictfp abstract class BasicCombatStrategy {
      * @param targetRobot The robot I want to shoot at.
      * @return True when it should be OK to fire at the target.
      */
-    private boolean isItObviouslyStupidToFireAt(RobotInfo targetRobot) {
+    protected boolean isItObviouslyStupidToFireAt(RobotInfo targetRobot) {
         Direction bulletDirection = me.directionTo(targetRobot.getLocation());
 
         // look for the teammates and trees which are in the way

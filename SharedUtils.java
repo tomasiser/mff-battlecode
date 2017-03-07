@@ -98,7 +98,7 @@ public strictfp class SharedUtils {
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
 
-        return willCollide(bulletLocation, myLocation, cf*rc.getType().bodyRadius, propagationDirection);
+        return willCollide(bulletLocation, myLocation, (float) cf * rc.getType().bodyRadius, propagationDirection);
     }
 
     /**
