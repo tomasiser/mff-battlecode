@@ -145,6 +145,21 @@ public strictfp class Broadcaster {
     }
 
     /**
+     * Get the archon on the given position.
+     * @param loc The location of the aleged archon.
+     * @return The archon
+     */
+    public ArchonLocation getArchonAtPosition(MapLocation loc) {
+        for (ArchonLocation archon : archonLocations) {
+            if (archon.location.equals(loc)) {
+                return archon;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Find the nearest position where some action is needed.
      * @return The position of the nearest action.
      */

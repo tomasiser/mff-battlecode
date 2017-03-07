@@ -1,5 +1,6 @@
 package KSTTForTheWin.CombatUtils;
 
+import KSTTForTheWin.Broadcasting.ArchonLocation;
 import KSTTForTheWin.Broadcasting.Broadcaster;
 import KSTTForTheWin.SharedUtils;
 import battlecode.common.*;
@@ -22,6 +23,7 @@ public strictfp abstract class BasicCombatStrategy {
     private BulletInfo[] nearbyBullets;
     private TreeInfo[] nearbyTrees;
     private RobotInfo lastTarget;
+    private ArchonLocation archonTarget;
     private MapLocation me;
 
     // pseudo constant
@@ -56,9 +58,8 @@ public strictfp abstract class BasicCombatStrategy {
         }
 
         // I might have killed the ARCHON and that would be awesome and I have to tell it to my friends then!
-        if (lastTarget != null) {
+        if (archonTarget != null) {
             checkIfIKilledArchon();
-            lastTarget = null;
         }
 
         // first make sure the unit knows, where it wants to go
@@ -311,7 +312,7 @@ public strictfp abstract class BasicCombatStrategy {
      * @return Choose next goal when there is no goal ready yet.
      */
     protected boolean shouldChooseNewGoal() {
-        return !hasGoal() || hasOnlyTmpGoal || hasReachedGoal();
+        return !hasGoal() || hasOnlyTmpGoal || hasReachedGoal() || rc.getRoundNum() % 200 == 0; // re-evaluate the goal every 200 rounds 
     }
 
     /**
@@ -356,15 +357,16 @@ public strictfp abstract class BasicCombatStrategy {
      */
     private void shootAt(RobotInfo targetRobot, boolean shootBurst) {
         if (targetRobot != null && hasEnoughAmmunition(shootBurst) && !isItObviouslyStupidToFireAt(targetRobot)) {
-            boolean shot;
             if (shootBurst) {
-                shot = shootBurst(targetRobot);
+                shootBurst(targetRobot);
             } else {
-                shot = shootSingle(targetRobot);
+                shootSingle(targetRobot);
             }
 
-            if (shot) {
+            // only ARCHONS are interesting
+            if (targetRobot.getType() == RobotType.ARCHON) {
                 lastTarget = targetRobot;
+                archonTarget = broadcaster.getArchonAtPosition(targetRobot.getLocation());
             }
         }
     }
@@ -432,15 +434,27 @@ public strictfp abstract class BasicCombatStrategy {
      */
     private void checkIfIKilledArchon() {
         if (lastTarget != null && lastTarget.getType() == RobotType.ARCHON) {
-            if (lastTarget.getHealth() <= 0) { // @todo does 0 mean already dead or should it be negative?
+            System.out.println(lastTarget.getHealth());
+
+            if (isDead(lastTarget)) {
+                System.out.println("ARCHON is DEAD!!");
                 try {
                     broadcaster.reportEnemyArchonDied(lastTarget.getID());
-                    System.out.println("ARCHON is DEAD!!");
                 } catch (GameActionException e) {
                     // well, I could not inform the mates, but it is not the end of the world... at least I don't explode!
                 }
             }
         }
+    }
+
+    /**
+     * Check if the given robot has already died.
+     * @param robot The robot
+     * @reutrn True if the robot is dead.
+     */
+    private boolean isDead(RobotInfo robot) {
+        // well... 2 does not mean dead, but someone must be shooting at it right at the moment and will probably finish it off!!
+        return robot.getHealth() <= 10;
     }
 
 }

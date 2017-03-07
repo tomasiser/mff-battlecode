@@ -35,7 +35,7 @@ public strictfp class ScoutPlayer {
     static RobotInfo[] robots;
 
 	static void runScout(RobotController rc) throws GameActionException {
-        System.out.println("I'm a KSTT scout!");
+        // System.out.println("I'm a KSTT scout!");
         broadcaster = new Broadcaster(rc);
         state = EXPLORE_DIR;
         dir = randomDirection();

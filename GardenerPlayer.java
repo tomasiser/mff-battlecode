@@ -28,7 +28,7 @@ public strictfp class GardenerPlayer {
 		
 		try {
 			//initialization of the gardener
-	        System.out.println("I'm a KSTT gardener!");
+	        // System.out.println("I'm a KSTT gardener!");
 	        broadcaster = new Broadcaster(rc);
 	        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(2F);
 	        //System.out.println("Location:" + rc.getLocation().toString());

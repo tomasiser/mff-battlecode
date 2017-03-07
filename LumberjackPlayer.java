@@ -8,7 +8,7 @@ public strictfp class LumberjackPlayer {
     @SuppressWarnings("unused")
 
 	static void runScout(RobotController rc) throws GameActionException {
-        System.out.println("I'm a KSTT lumberjack!");
+        // System.out.println("I'm a KSTT lumberjack!");
         Team enemy = rc.getTeam().opponent();
         BasicCombatStrategy strategy = new LumberjackStrategy(rc, enemy);
 

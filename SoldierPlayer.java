@@ -17,7 +17,7 @@ public strictfp class SoldierPlayer {
     static double attackerChance = 0.6;
 
 	static void runSoldier(RobotController rcon) throws GameActionException {
-        System.out.println("I'm a KSTT soldier!");
+        // System.out.println("I'm a KSTT soldier!");
         rc = rcon;
         Team enemy = rc.getTeam().opponent();
 

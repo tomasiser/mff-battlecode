@@ -8,7 +8,7 @@ public strictfp class TankPlayer {
     @SuppressWarnings("unused")
 
 	static void runTank(RobotController rc) throws GameActionException {
-        System.out.println("I'm a KSTT tank!");
+        // System.out.println("I'm a KSTT tank!");
         Team enemy = rc.getTeam().opponent();
         BasicCombatStrategy strategy = new AttackerCombatStrategy(rc, enemy);
 
