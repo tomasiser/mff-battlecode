@@ -4,7 +4,8 @@ import battlecode.common.*;
 
 import java.awt.*;
 
-import static KSTTForTheWin.ScoutPlayer.states.EXPLORE;
+import static KSTTForTheWin.ScoutPlayer.states.EXPLORE_DIR;
+import static KSTTForTheWin.ScoutPlayer.states.EXPLORE_LOC;
 import static KSTTForTheWin.SharedUtils.*;
 
 /**
@@ -13,15 +14,17 @@ import static KSTTForTheWin.SharedUtils.*;
 
 public strictfp class ScoutPlayer {
     enum states {
-        EXPLORE, TRACK
+        EXPLORE_DIR, EXPLORE_LOC, TRACK
     }
 
     final static double safeRadius = 10.0;
 
     @SuppressWarnings("unused")
     static Direction dir = randomDirection();
+    static MapLocation loc;
     static int trackedArchon = 0;
-    static states state = EXPLORE;
+    static states state = EXPLORE_DIR;
+    static int dodgeDir = 0;
 
     //// See if there are any nearby enemy robots
     //RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
@@ -34,21 +37,28 @@ public strictfp class ScoutPlayer {
 	static void runScout(RobotController rc) throws GameActionException {
         System.out.println("I'm a KSTT scout!");
         broadcaster = new Broadcaster(rc);
-        state = EXPLORE;
+        state = EXPLORE_DIR;
+        dir = randomDirection();
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
 
-            refreshCache(rc);
+            Integer round = rc.getRoundNum();
+            refreshCache(rc, round);
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
                 switch(state)
                 {
-                    case EXPLORE:
+                    case EXPLORE_LOC:
                         explore(rc);
+                        break;
+                    case EXPLORE_DIR:
+                        explore(rc);
+                        break;
                     case TRACK:
                         track(rc);
+                        break;
                 }
 
                 Clock.yield();
@@ -60,11 +70,11 @@ public strictfp class ScoutPlayer {
         }
     }
 
-    static void refreshCache(RobotController rc) throws GameActionException
+    static void refreshCache(RobotController rc, Integer roundNum) throws GameActionException
     {
-        broadcaster.refresh(); //not needed (yet)
-        bullets = rc.senseNearbyBullets();
+        broadcaster.refresh();
         robots = rc.senseNearbyRobots();
+        bullets = rc.senseNearbyBullets();
     }
 
     static boolean avoidDangers(RobotController rc) throws GameActionException
@@ -77,9 +87,9 @@ public strictfp class ScoutPlayer {
         for(BulletInfo bullet : bullets)
         {
             double distance = bullet.getLocation().distanceTo(myLocation);
-            if(nearestCollidingBullet != null &&  distance < nearestCollisionDistance)
+            if(distance < nearestCollisionDistance)
             {
-                if(willCollideWithMe(rc, bullet))
+                if(willCollideWithMe(rc, bullet, 10.0))
                 {
                     nearestCollisionDistance = distance;
                     nearestCollidingBullet = bullet;
@@ -89,8 +99,7 @@ public strictfp class ScoutPlayer {
         }
         if(nearestCollidingBullet != null)
         {
-            tryMove(rc, getDodgeDirection(rc, nearestCollidingBullet));
-            return true;
+            return trySimpleMove(rc, getDodgeDirection(rc, nearestCollidingBullet));
         }
 
         /*check for robots*/
@@ -111,9 +120,12 @@ public strictfp class ScoutPlayer {
         }
         if(nearestEnemy != null)
         {
-            Direction newDir = nearestEnemy.getLocation().directionTo(myLocation);
-            tryMove(rc, newDir);
-            return true;
+            Direction newDir;
+            if(nearestEnemyDistance > safeRadius - 2.0)
+                newDir = getDodgeDirection(rc, nearestEnemy, dodgeDir);
+            else
+                newDir = nearestEnemy.getLocation().directionTo(myLocation);
+            return trySimpleMove(rc, newDir);
         }
         return false;
     }
@@ -129,21 +141,42 @@ public strictfp class ScoutPlayer {
         }
     }
 
+    static void pickMove(RobotController rc) throws GameActionException {
+        dodgeDir++;
+        if (Math.random() < .03) {
+            dir = randomDirection();
+            state = EXPLORE_DIR;
+        }
+        else {
+            //loc = broadcaster.findNearestAction();
+            loc = broadcaster.randomArchonLocation();
+            if(loc != null) {
+                state = EXPLORE_LOC;
+                dir = rc.getLocation().directionTo(loc);
+            }
+        }
+    }
+
     // The code you want your robot to perform every round should be in this loop
-    static void explore(RobotController rc) throws GameActionException
-    {
+    static void explore(RobotController rc) throws GameActionException {
         observe(rc);
 
-        if (Math.random() < .01)
-            dir = randomDirection();
+        if (Math.random() < .02) {
+            pickMove(rc);
+        }
+
+        if (state == EXPLORE_LOC && loc != null) {
+            dir = rc.getLocation().directionTo(loc);
+            rc.setIndicatorDot(loc, 0, 0, 255);
+        }
 
 
-        if(!avoidDangers(rc) && !tryMove(rc, dir))
-        {
-            dir = randomDirection();
+        if (!avoidDangers(rc) && !trySimpleMove(rc, dir)) {
+            pickMove(rc);
             tryMove(rc, dir);
         }
     }
+
 
     static void track(RobotController rc)  throws GameActionException
     {

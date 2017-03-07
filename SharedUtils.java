@@ -24,6 +24,22 @@ public strictfp class SharedUtils {
         return tryMove(rc, dir, 20, 3);
     }
 
+    static boolean trySimpleMove(RobotController rc, Direction dir) throws GameActionException {
+      if(rc.canMove(dir))
+      {
+          try {
+              rc.move(dir);
+          }
+       catch (Exception e) {
+            System.out.println("Move exception");
+            e.printStackTrace();
+        }
+        return true;
+      }
+      else
+        return false;
+    }
+
     /**
      * Attempts to move in a given direction, while avoiding small obstacles direction in the path.
      *
@@ -72,6 +88,10 @@ public strictfp class SharedUtils {
      * @return True if the line of the bullet's path intersects with this robot's current position.
      */
     static boolean willCollideWithMe(RobotController rc, BulletInfo bullet) {
+        return willCollideWithMe(rc, bullet, 1.0);
+    }
+
+    static boolean willCollideWithMe(RobotController rc, BulletInfo bullet, double cf) {
         MapLocation myLocation = rc.getLocation();
 
         // Get relevant bullet information
@@ -94,7 +114,19 @@ public strictfp class SharedUtils {
         // line that is the path of the bullet.
         float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
 
-        return (perpendicularDist <= rc.getType().bodyRadius);
+        return (perpendicularDist <= cf*rc.getType().bodyRadius);
+    }
+
+    static Direction getDodgeDirection(RobotController rc, BodyInfo bullet, int preferredDir)
+    {
+        MapLocation myLocation = rc.getLocation();
+        Direction relativeDirection = bullet.getLocation().directionTo(myLocation);
+        Direction candidate;
+        if(preferredDir % 2 == 0)
+            candidate = relativeDirection.rotateRightDegrees(90);
+        else
+            candidate = relativeDirection.rotateLeftDegrees(90);
+        return candidate;
     }
 
     static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
@@ -104,9 +136,9 @@ public strictfp class SharedUtils {
         Direction bulletDirection = bullet.getDir();
         Direction candidate;
         if(relativeDirection.radiansBetween(bulletDirection) > 0)
-            candidate = relativeDirection.rotateRightDegrees(90);
+            candidate = relativeDirection.rotateRightDegrees(70);
         else
-            candidate = relativeDirection.rotateLeftDegrees(90);
+            candidate = relativeDirection.rotateLeftDegrees(70);
         return candidate;
     }
 
