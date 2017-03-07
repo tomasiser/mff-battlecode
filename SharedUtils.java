@@ -9,7 +9,7 @@ public strictfp class SharedUtils {
      * Returns a random Direction
      * @return a random Direction
      */
-    static Direction randomDirection() {
+    public static Direction randomDirection() {
         return new Direction((float)Math.random() * 2 * (float)Math.PI);
     }
 
@@ -20,7 +20,7 @@ public strictfp class SharedUtils {
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryMove(RobotController rc, Direction dir) throws GameActionException {
+    public static boolean tryMove(RobotController rc, Direction dir) throws GameActionException {
         return tryMove(rc, dir, 20, 3);
     }
 
@@ -33,7 +33,7 @@ public strictfp class SharedUtils {
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
+    public static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
 
         // First, try intended direction
         if (rc.canMove(dir)) {
@@ -71,7 +71,7 @@ public strictfp class SharedUtils {
      * @param bullet The bullet in question
      * @return True if the line of the bullet's path intersects with this robot's current position.
      */
-    static boolean willCollideWithMe(RobotController rc, BulletInfo bullet) {
+    public static boolean willCollideWithMe(RobotController rc, BulletInfo bullet) {
         MapLocation myLocation = rc.getLocation();
 
         // Get relevant bullet information
@@ -97,7 +97,7 @@ public strictfp class SharedUtils {
         return (perpendicularDist <= rc.getType().bodyRadius);
     }
 
-    static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
+    public static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
     {
         MapLocation myLocation = rc.getLocation();
         Direction relativeDirection = bullet.getLocation().directionTo(myLocation);
@@ -110,7 +110,7 @@ public strictfp class SharedUtils {
         return candidate;
     }
 
-    static boolean robotIsDangerous(RobotInfo info)
+    public static boolean robotIsDangerous(RobotInfo info)
     {
         switch (info.getType()) {
             case ARCHON:
