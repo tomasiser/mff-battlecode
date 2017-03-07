@@ -12,28 +12,29 @@ import battlecode.common.*;
 public strictfp abstract class BasicCombatStrategy {
 
     // the model of the environment
-    private RobotController rc;
+    protected RobotController rc;
     private MapLocation goal;
     private boolean hasOnlyTmpGoal;
     private MapLocation safeLocation;
-    private Team enemy;
+    protected Team enemy;
     private RobotInfo[] nearbyEnemyRobots;
+    private RobotInfo[] nearbyOurRobots;
     private BulletInfo[] nearbyBullets;
+    private TreeInfo[] nearbyTrees;
     private RobotInfo lastTarget;
     private MapLocation me;
 
     // pseudo constants
-    protected float GOAL_RADIUS_SQ = 25f; // @todo what is the scale?
-    protected float SHOOTING_RANGE_SQ = 0; // @todo what is the scale?
+    private float GOAL_RADIUS_SQ = 200f; // @todo what is the scale?
 
     // communication with the team
-    protected Broadcaster broadcaster;
+    Broadcaster broadcaster;
 
     /**
      * Every combat unit should use this utils for their common behavior.
      * @param rc The controller of the robot.
      */
-    public BasicCombatStrategy(RobotController rc, Team enemy) {
+    BasicCombatStrategy(RobotController rc, Team enemy) {
         this.broadcaster = new Broadcaster(rc);
         this.rc = rc;
         me = rc.getLocation();
@@ -50,8 +51,11 @@ public strictfp abstract class BasicCombatStrategy {
         me = rc.getLocation();
         try {
             broadcaster.refresh();
-        } catch (GameActionException e) {}
+        } catch (GameActionException e) {
+            System.out.println("OUCH! broadcaster cannot refresh");
+        }
 
+        // I might have killed the ARCHON and that would be awesome and I have to tell it to my friends then!
         if (lastTarget != null) {
             checkIfIKilledArchon();
             lastTarget = null;
@@ -60,36 +64,34 @@ public strictfp abstract class BasicCombatStrategy {
         // first make sure the unit knows, where it wants to go
         if (shouldChooseNewGoal()) {
             setGoal(null); // forget the previous goal
-            if (!chooseNextGoal()) {
+            if (!chooseGoal()) {
                 // there is nothing to do... - no known positions of enemies and nobody needs help
                 // so return back home
                 setGoal(chooseRandomGoal());
+                System.out.println("Random goal was chosen.");
                 hasOnlyTmpGoal = true;
             } else {
-                System.out.println("Soldier " + rc.getID() + " has NEW GOAL");
                 hasOnlyTmpGoal = false;
             }
         }
 
-        // default behavior is to get closer to the global goal (if any)
+        // default behavior is to get closer to the global goal (if there is any)
         MapLocation currentGoal = goal;
 
-        // place a debug flag on the goal (if any)
+        // DEBUG: place a debug flag on the goal (if any)
         if (hasGoal()) {
             rc.setIndicatorDot(goal, 0, 255, 0);
             rc.setIndicatorLine(me, goal, 0, 255, 0);
-        } else {
-            rc.setIndicatorDot(me, 0, 0, 0);
         }
 
         lookAround();
 
         // fight the enemies if they are nearby
         if (shouldFight()) {
-            System.out.println("Soldier " + rc.getID() + " should FIGHT!");
+            System.out.println("FIGHT!");
             RobotInfo target = chooseBestShootingTarget();
             if (target != null) {
-                System.out.println("Soldier " + rc.getID() + " TARGET ACQUIRED!");
+                System.out.println("TARGET ACQUIRED!");
                 boolean burst = false; // @todo check if there are multiple enemies in that direction
                 shootAt(target, burst);
             }
@@ -97,28 +99,44 @@ public strictfp abstract class BasicCombatStrategy {
 
         // even if I am fighting, I might not go directly towards the enemy, but rather flee for life!
         if (shouldFlee()) {
-            System.out.println("Soldier " + rc.getID() + " runs away");
+            System.out.println("Run away!!");
             currentGoal = safeLocation;
+
+            try {
+                broadcaster.reportHelpNeeded();
+            } catch (GameActionException e) {
+                System.out.println("I try to call for help, but the radio does not work!");
+            }
         }
 
+        // DEBUG: mark the current goal
         if (currentGoal != null) {
             rc.setIndicatorLine(me, currentGoal, 255, 0, 0);
         }
 
+        // check if there is a risk of being hit by a bullet
         BulletInfo dangerousBullet = getMostDangerousBullet();
         if (dangerousBullet != null) {
-            // no time for reaching goals - just try to survive!
-            rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
-            rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
-
-            try {
-                SharedUtils.tryMove(rc, SharedUtils.getDodgeDirection(rc, dangerousBullet));
-            } catch (GameActionException e) {
-                // whaaaat???!!! I might die!!
-            }
+            dodgeBullet(dangerousBullet);
         } else if (currentGoal != null) {
             // move in the direction of the goal of this round
             moveTowardsAGoal(currentGoal);
+        }
+    }
+
+    /**
+     * No time for reaching goals - just try to survive!
+     * @param dangerousBullet The bullet which might hit me
+     */
+    private void dodgeBullet(BulletInfo dangerousBullet) {
+        // DEBUG: mark the bullet and the robot it endangers
+        rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
+        rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
+
+        try {
+            SharedUtils.tryMove(rc, SharedUtils.getDodgeDirection(rc, dangerousBullet));
+        } catch (GameActionException e) {
+            // whaaaat???!!! I might die!!
         }
     }
 
@@ -127,6 +145,22 @@ public strictfp abstract class BasicCombatStrategy {
      */
     private void lookAround() {
         nearbyEnemyRobots = rc.senseNearbyRobots(-1, enemy);
+        nearbyOurRobots = rc.senseNearbyRobots(-1, rc.getTeam());
+        nearbyTrees = rc.senseNearbyTrees();
+
+        for (RobotInfo robot : nearbyEnemyRobots) {
+            if (robot.getType() == RobotType.ARCHON) {
+                try {
+                    broadcaster.reportEnemyArchon(robot.getID(), robot.getLocation());
+                } catch (GameActionException e) {
+                    // no idea what to do.. so just a silent error
+                    System.out.println("Soldier " + rc.getID() + " - cannot report the position of the archon " + robot.getID());
+                }
+
+                setGoal(robot.getLocation()); // just switch the goal to the archon I found
+            }
+        }
+
         nearbyBullets = rc.senseNearbyBullets();
     }
 
@@ -134,7 +168,7 @@ public strictfp abstract class BasicCombatStrategy {
      * There might be some global goal of the unit.
      * @return True if the unit has a goal which it follows, false otherwise.
      */
-    protected boolean hasGoal() {
+    private boolean hasGoal() {
         return goal != null;
     }
 
@@ -142,7 +176,7 @@ public strictfp abstract class BasicCombatStrategy {
      * Set a new goal location.
      * @param goal The new goal
      */
-    protected void setGoal(MapLocation goal) {
+    void setGoal(MapLocation goal) {
         this.goal = goal;
     }
 
@@ -151,23 +185,38 @@ public strictfp abstract class BasicCombatStrategy {
      * @return Whether the unit reached the goal or not.
      */
     private boolean hasReachedGoal() {
-        return hasGoal() && goal.distanceSquaredTo(me) < GOAL_RADIUS_SQ;
+        System.out.println("hasReachedGoal?? :: Has goal?? -> " + (hasGoal() ? "yes" : "no"));
+        if (hasGoal() && isVeryClose(goal)) {
+            System.out.println("Goal was reached");
+            setGoal(null);
+            System.out.println("hasReachedGoal?? :: HAD goal, now has goal?? -> " + (hasGoal() ? "yes" : "no"));
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if the location is close to me.
+     * @return The location is within reach
+     */
+    private boolean isVeryClose(MapLocation loc) {
+        return loc.distanceSquaredTo(me) < GOAL_RADIUS_SQ;
     }
 
     /**
      *
      * @return New goal
      */
-    protected MapLocation chooseRandomGoal() {
+    private MapLocation chooseRandomGoal() {
         // @todo make this somehow smart..
-        return safeLocation;
+        return null; // do nothing
     }
 
     /**
      * Look at the nearby bullets and figure out, if some is about to hit me soon.
      * @return The bullet which is about to hit me if I don't do anything about it.
      */
-    protected BulletInfo getMostDangerousBullet() {
+    private BulletInfo getMostDangerousBullet() {
         BulletInfo bullet = null;
 
         for (BulletInfo nearbyBullet : nearbyBullets) {
@@ -190,11 +239,31 @@ public strictfp abstract class BasicCombatStrategy {
     }
 
     /**
-     * If there is a dangerous enemy robot nearby, flee!
+     * If there are dangerous enemy robot nearby, flee!
      * @return True when there is a danger nearby
      */
     protected boolean shouldFlee() {
-        return false;
+        // I don't have ammo, just run away
+        if (nearbyEnemyRobots.length > 0 && !rc.canFirePentadShot()) {
+            return true;
+        }
+
+        // if there are more opponents than our robots, flee as well and wait for reinforcements
+        float ourHP = rc.getHealth();
+        for (RobotInfo robot : nearbyOurRobots) {
+            if (SharedUtils.robotIsDangerous(robot)) {
+                ourHP += robot.getHealth();
+            }
+        }
+
+        float theirHP = 0;
+        for (RobotInfo robot : nearbyEnemyRobots) {
+            if (SharedUtils.robotIsDangerous(robot)) {
+                theirHP += robot.getHealth();
+            }
+        }
+
+        return ourHP < theirHP;
     }
 
     /**
@@ -204,17 +273,19 @@ public strictfp abstract class BasicCombatStrategy {
     protected RobotInfo chooseBestShootingTarget() {
         RobotInfo nearest = null;
         for (RobotInfo robot : nearbyEnemyRobots) {
-            if (nearest == null ||
+            if ((nearest == null ||
                     getTargetPriority(robot.getType()) > getTargetPriority(nearest.getType()) ||
-                    me.distanceSquaredTo(robot.getLocation()) < me.distanceSquaredTo(nearest.getLocation())) {
-                // do not be too fast with shooting...
-                if (!isItObviouslyStupidToFireAt(robot)) {
-                    nearest = robot;
-                }
+                    me.distanceSquaredTo(robot.getLocation()) < me.distanceSquaredTo(nearest.getLocation())) &&
+                    !isItObviouslyStupidToFireAt(robot)) {
+                nearest = robot;
             }
         }
 
-        rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
+        // DEBUG: mark the target
+        if (nearest != null) {
+            rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
+        }
+
         return nearest;
     }
 
@@ -254,9 +325,12 @@ public strictfp abstract class BasicCombatStrategy {
      * Select a location where the unit should go and be useful for the team.
      * @return True if some goal was selected.
      */
-    protected boolean chooseNextGoal() {
+    protected boolean chooseGoal() {
         MapLocation nearestAction = broadcaster.findNearestAction();
-        if (nearestAction != null && nearestAction != me) {
+
+        // do not choose a goal which I have already reached
+        if (nearestAction != null && !isVeryClose(nearestAction)) {
+            System.out.println("Proper goal was chosen.");
             goal = nearestAction;
         }
 
@@ -331,8 +405,25 @@ public strictfp abstract class BasicCombatStrategy {
      * @return True when it should be OK to fire at the target.
      */
     private boolean isItObviouslyStupidToFireAt(RobotInfo targetRobot) {
-        // @todo check for friendly fire
-        return false;// targetRobot.getLocation().distanceSquaredTo(me) > SHOOTING_RANGE_SQ; // the robot is too far away
+        Direction bulletDirection = me.directionTo(targetRobot.getLocation());
+
+        // look for the teammates and trees which are in the way
+        for (RobotInfo ourRobot : nearbyOurRobots) {
+            if (me.distanceSquaredTo(ourRobot.getLocation()) < me.distanceSquaredTo(targetRobot.getLocation())
+                    && SharedUtils.willCollide(me, ourRobot.getLocation(), ourRobot.getRadius(), bulletDirection)) {
+                return true; // friendly fire!!!
+            }
+        }
+
+        // trees can be destroyed by bullets, but bullets meant for the enemies!!
+        for (TreeInfo tree : nearbyTrees) {
+            if (me.distanceSquaredTo(tree.getLocation()) < me.distanceSquaredTo(targetRobot.getLocation())
+                    && SharedUtils.willCollide(me, tree.getLocation(), tree.getRadius(), bulletDirection)) {
+                return true; // waste of ammo
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -351,12 +442,11 @@ public strictfp abstract class BasicCombatStrategy {
             if (lastTarget.getHealth() <= 0) { // @todo does 0 mean already dead or should it be negative?
                 try {
                     broadcaster.reportEnemyArchonDied(lastTarget.getID());
+                    System.out.println("ARCHON is DEAD!!");
                 } catch (GameActionException e) {
                     // well, I could not inform the mates, but it is not the end of the world... at least I don't explode!
                 }
             }
-
-            lastTarget = null;
         }
     }
 

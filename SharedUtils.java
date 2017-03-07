@@ -78,9 +78,21 @@ public strictfp class SharedUtils {
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
 
+        return willCollide(bulletLocation, myLocation, rc.getType().bodyRadius, propagationDirection);
+    }
+
+    /**
+     * Calculate if the aims at the target.
+     * @param bulletLocation
+     * @param targetLocation
+     * @param targetRadius
+     * @param propagationDirection
+     * @return
+     */
+    public static boolean willCollide(MapLocation bulletLocation, MapLocation targetLocation, float targetRadius, Direction propagationDirection) {
         // Calculate bullet relations to this robot
-        Direction directionToRobot = bulletLocation.directionTo(myLocation);
-        float distToRobot = bulletLocation.distanceTo(myLocation);
+        Direction directionToRobot = bulletLocation.directionTo(targetLocation);
+        float distToRobot = bulletLocation.distanceTo(targetLocation);
         float theta = propagationDirection.radiansBetween(directionToRobot);
 
         // If theta > 90 degrees, then the bullet is traveling away from us and we can break early
@@ -94,7 +106,7 @@ public strictfp class SharedUtils {
         // line that is the path of the bullet.
         float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
 
-        return (perpendicularDist <= rc.getType().bodyRadius);
+        return (perpendicularDist <= targetRadius);
     }
 
     public static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)

@@ -148,9 +148,9 @@ public strictfp class Broadcaster {
         if (nearestArchon == null && nearestHelp == null) {
             return origin; // when no target is known, stay where you are
         } else if (nearestArchon == null) { // when some of the targets is not present, just return the other one
-            return nearestHelp;
+            return nearestHelp; // is not null
         } else if (nearestHelp == null) {
-            return nearestArchon;
+            return nearestArchon; // is not null
         }
 
         if (origin.distanceSquaredTo(nearestHelp) < origin.distanceSquaredTo(nearestArchon)) {
@@ -196,7 +196,7 @@ public strictfp class Broadcaster {
             ArchonLocation loc = archonLocations[i];
             if (loc.isDead()) continue;
             float distance = loc.location.distanceSquaredTo(origin);
-            if (distance < nearestDistance) {
+            if (nearestAction == null || distance < nearestDistance) {
                 nearestAction = loc.location;
                 nearestDistance = distance;
             }

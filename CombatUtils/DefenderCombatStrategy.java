@@ -18,7 +18,7 @@ public class DefenderCombatStrategy extends BasicCombatStrategy {
      * @return True if a new goal was set.
      */
     @Override
-    protected boolean chooseNextGoal() {
+    protected boolean chooseGoal() {
         MapLocation loc = broadcaster.findNearestHelp();
         if (loc != null) {
             setGoal(loc);

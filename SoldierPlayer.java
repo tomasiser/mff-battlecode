@@ -5,18 +5,26 @@ import KSTTForTheWin.CombatUtils.BasicCombatStrategy;
 import KSTTForTheWin.CombatUtils.DefenderCombatStrategy;
 import battlecode.common.*;
 
+import java.util.Random;
+
 public strictfp class SoldierPlayer {
 
     @SuppressWarnings("unused")
 
     static Broadcaster broadcaster;
     static RobotController rc;
+    static Random rnd = new Random();
+    static double attackerChance = 0.6;
 
 	static void runSoldier(RobotController rcon) throws GameActionException {
         System.out.println("I'm a KSTT soldier!");
         rc = rcon;
         Team enemy = rc.getTeam().opponent();
-        BasicCombatStrategy strategy = new AttackerCombatStrategy(rc, enemy);
+
+        // some are attackers, some are defenders
+        BasicCombatStrategy strategy = rnd.nextDouble() <= attackerChance
+                ? new AttackerCombatStrategy(rc, enemy)
+                : new DefenderCombatStrategy(rc, enemy);
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
