@@ -1,6 +1,8 @@
 package KSTTForTheWin.Broadcasting;
 import battlecode.common.*;
 
+import java.util.Random;
+
 public strictfp class Broadcaster {
 
     /**
@@ -134,6 +136,12 @@ public strictfp class Broadcaster {
         rc.broadcastInt(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex, roundNumber);
         rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex + 1, location.x);
         rc.broadcastFloat(HELP_NEEDED_FIRST_CHANNEL + ARCHON_LOC_LEN * oldestIndex + 2, location.y);
+    }
+
+    public MapLocation randomArchonLocation() {
+        Double r =  Math.random() / (1.0/enemyArchonCount);
+        Integer idx = r.intValue();
+        return archonLocations[idx].location;
     }
 
     /**
