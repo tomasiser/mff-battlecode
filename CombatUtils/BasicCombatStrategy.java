@@ -2,6 +2,9 @@ package KSTTForTheWin.CombatUtils;
 
 import KSTTForTheWin.Broadcasting.ArchonLocation;
 import KSTTForTheWin.Broadcasting.Broadcaster;
+
+import java.util.Random;
+
 import KSTTForTheWin.SharedUtils;
 import battlecode.common.*;
 
@@ -14,17 +17,20 @@ public strictfp abstract class BasicCombatStrategy {
 
     // the model of the environment
     protected RobotController rc;
-    private MapLocation goal;
-    private boolean hasOnlyTmpGoal;
+    protected MapLocation goal;
+    protected boolean hasOnlyTmpGoal;
     private MapLocation safeLocation;
     protected Team enemy;
-    private RobotInfo[] nearbyEnemyRobots;
-    private RobotInfo[] nearbyOurRobots;
-    private BulletInfo[] nearbyBullets;
-    private TreeInfo[] nearbyTrees;
+    protected RobotInfo[] nearbyEnemyRobots;
+    protected RobotInfo[] nearbyOurRobots;
+    protected BulletInfo[] nearbyBullets;
+    protected TreeInfo[] nearbyTrees;
     private RobotInfo lastTarget;
     private ArchonLocation archonTarget;
     private MapLocation me;
+    private int roundsOnTheSameSpot;
+    protected int remainingRandomRounds;
+    protected Random rnd;
 
     // pseudo constant
     private float VERY_CLOSE_SQ = 20f;
@@ -43,14 +49,23 @@ public strictfp abstract class BasicCombatStrategy {
         safeLocation = rc.getLocation(); // remember this location for when the unit should flee
         this.enemy = enemy;
         hasOnlyTmpGoal = true;
+        roundsOnTheSameSpot = 0;
+        remainingRandomRounds = 0;
+        rnd = new Random();
     }
 
     /**
      * Make one tick/step of the unit's life.
      */
-    public final void update() {
+    public void update() {
         // prepare for the new turn
-        me = rc.getLocation();
+        if (rc.getLocation().equals(me)) {
+            roundsOnTheSameSpot++;
+        } else {
+            roundsOnTheSameSpot = 0;
+            me = rc.getLocation();
+        }
+
         try {
             broadcaster.refresh();
         } catch (GameActionException e) {
@@ -107,14 +122,21 @@ public strictfp abstract class BasicCombatStrategy {
         }
 
         // DEBUG: mark the current goal
-        if (currentGoal != null) {
-            rc.setIndicatorLine(me, currentGoal, 255, 0, 0);
+        // if (currentGoal != null) {
+        //     rc.setIndicatorLine(me, currentGoal, 255, 0, 0);
+        // }
+
+        if (stuckForTooLong()) {
+            remainingRandomRounds += 10; // wander around for a while to get from the dead end
         }
 
         // check if there is a risk of being hit by a bullet
         BulletInfo dangerousBullet = getMostDangerousBullet();
         if (dangerousBullet != null) {
             dodgeBullet(dangerousBullet);
+        } else if (remainingRandomRounds > 0) {
+            moveRandomly();
+            remainingRandomRounds--;
         } else if (currentGoal != null) {
             // move in the direction of the goal of this round
             moveTowardsAGoal(currentGoal);
@@ -140,7 +162,7 @@ public strictfp abstract class BasicCombatStrategy {
     /**
      * Use the sensors to see what is around the unit.
      */
-    private void lookAround() {
+    protected void lookAround() {
         nearbyEnemyRobots = rc.senseNearbyRobots(-1, enemy);
         nearbyOurRobots = rc.senseNearbyRobots(-1, rc.getTeam());
         nearbyTrees = rc.senseNearbyTrees();
@@ -173,7 +195,7 @@ public strictfp abstract class BasicCombatStrategy {
      * Set a new goal location.
      * @param goal The new goal
      */
-    void setGoal(MapLocation goal) {
+    protected void setGoal(MapLocation goal) {
         this.goal = goal;
     }
 
@@ -257,7 +279,8 @@ public strictfp abstract class BasicCombatStrategy {
             }
         }
 
-        return ourHP < theirHP;
+        double factor = SharedUtils.robotTypeIsDangerous(rc.getType()) ? 1.5 : 0.9;
+        return factor * ourHP < theirHP;
     }
 
     /**
@@ -312,7 +335,7 @@ public strictfp abstract class BasicCombatStrategy {
      * @return Choose next goal when there is no goal ready yet.
      */
     protected boolean shouldChooseNewGoal() {
-        return !hasGoal() || hasOnlyTmpGoal || hasReachedGoal() || rc.getRoundNum() % 200 == 0; // re-evaluate the goal every 200 rounds 
+        return !hasGoal() || stuckForTooLong() || hasOnlyTmpGoal || hasReachedGoal();
     }
 
     /**
@@ -332,8 +355,16 @@ public strictfp abstract class BasicCombatStrategy {
     }
 
     /**
+     * Check if the goal is not reachable for some reason - there si some obsatacle I cannot overcome.
+     * @return True when the the robot stays on the same spot for several rounds.
+     */
+    protected boolean stuckForTooLong() {
+        return roundsOnTheSameSpot > 5;
+    }
+
+    /**
      * Choose a direction in which the unit should move to reach the goal.
-     * @return The next spot where the unit wants to step.
+     * @param goal The spot I want to reach
      */
     protected void moveTowardsAGoal(MapLocation goal) {
         MapLocation nextStep = goal;
@@ -347,6 +378,18 @@ public strictfp abstract class BasicCombatStrategy {
                 SharedUtils.tryMove(rc, direction);
             } catch (GameActionException e) {
             }
+        }
+    }
+
+    /**
+     * Choose a direction in which the unit should move to reach the goal.
+     */
+    protected void moveRandomly() {
+        // now that I know the next spot I want to end up on, go in that direction
+        Direction direction = new Direction((float) (rnd.nextDouble() * Math.PI));
+        try {
+            SharedUtils.tryMove(rc, direction);
+        } catch (GameActionException e) {
         }
     }
 

@@ -11,6 +11,26 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
     }
 
     /**
+     * Avoid randomness.
+     */
+    @Override
+    public void update() {
+        remainingRandomRounds = -1000; // do not ever walk randomly - chop the trees in the way
+        
+        // shake and chop nearby trees - priority: ENEMY trees
+        TreeInfo[] trees = rc.senseNearbyTrees(1.9f, enemy);
+        if (trees.length == 0) {
+            trees = rc.senseNearbyTrees(1.9f, Team.NEUTRAL);
+        }
+
+        if (trees.length > 0) {
+            setGoal(trees[0].getLocation());
+        }
+
+        super.update();
+    }
+
+    /**
      * Shooting in fact means hitting with the axe.
      */
     @Override
@@ -56,14 +76,15 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
     @Override
     protected void moveTowardsAGoal(MapLocation goal) {
         try {
-            // shake and chop nearby trees
-            TreeInfo[] trees = rc.senseNearbyTrees(1.9f, Team.NEUTRAL);
+            // shake and chop nearby trees - priority: ENEMY trees
+            TreeInfo[] trees = rc.senseNearbyTrees(1.9f, enemy);
             if (trees.length > 0) {
-                rc.shake(trees[0].ID);
                 rc.chop(trees[0].ID);
             } else {
-                trees = rc.senseNearbyTrees(1.9f, enemy);
+                // shake and chop nearby trees - priority: ENEMY trees
+                trees = rc.senseNearbyTrees(1.9f, Team.NEUTRAL);
                 if (trees.length > 0) {
+                    rc.shake(trees[0].ID);
                     rc.chop(trees[0].ID);
                 } else {
                     super.moveTowardsAGoal(goal);

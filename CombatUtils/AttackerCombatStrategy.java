@@ -14,12 +14,13 @@ import java.util.Random;
  */
 public class AttackerCombatStrategy extends BasicCombatStrategy {
 
-    Random rnd;
-    private final double HELP_PROBABILITY = 0.35;
+    private final double HELP_PROBABILITY = 0.5;
+    private final double DESTROY_ENEMY_FIRST_PROBABILITY = 0.05;
+    private MapLocation prevGoal;
 
     public AttackerCombatStrategy(RobotController rc, Team enemy) {
         super(rc, enemy);
-        rnd = new Random();
+        prevGoal = null;
     }
 
     /**
@@ -29,17 +30,31 @@ public class AttackerCombatStrategy extends BasicCombatStrategy {
     @Override
     protected boolean chooseGoal() {
         MapLocation loc = broadcaster.findNearestArchon();
-        if (loc == null || isVeryClose(loc) || rnd.nextDouble() <= HELP_PROBABILITY) {
+        if (loc == null || loc.equals(prevGoal) || isVeryClose(loc) || rnd.nextDouble() <= HELP_PROBABILITY) {
             // even though attacking is preferred, now there is a friend I must help!
             loc = broadcaster.findNearestHelp();
         }
 
         if (loc != null && !isVeryClose(loc)) {
+            prevGoal = goal;
             setGoal(loc);
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Find a target which should be targeted first.
+     * @return The nearest enemy with the highest priority (by its type)
+     */
+    protected RobotInfo chooseBestShootingTarget() {
+        RobotInfo nearest = super.chooseBestShootingTarget();
+        if (nearest != null && rnd.nextDouble() < DESTROY_ENEMY_FIRST_PROBABILITY) {
+            setGoal(nearest.getLocation()); // kill this enemy first before going for the real target
+        }
+
+        return nearest;
     }
 
 }
