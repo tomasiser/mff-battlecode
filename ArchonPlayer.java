@@ -56,7 +56,7 @@ public strictfp class ArchonPlayer {
 
 
                 // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .015)) {
+                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
                     rc.hireGardener(dir);
                     if (!builtTreeGardener) builtTreeGardener = true;
                     else if (!builtBuilderGardener) builtBuilderGardener = true;
@@ -64,7 +64,7 @@ public strictfp class ArchonPlayer {
 
                 // Move away from action
                 Direction away = (new Direction(myLocation, broadcaster.findNearestAction())).opposite();
-                SharedUtils.tryMove(rc, away);
+                // SharedUtils.tryMove(rc, away);
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();

@@ -232,7 +232,7 @@ public strictfp class SharedUtils {
 	 * @return true, if some tree was shaken
 	 * */
 	public static boolean tryShake(RobotController rc) throws GameActionException {
-		TreeInfo[] availbleTrees = rc.senseNearbyTrees(2F, Team.NEUTRAL);
+		TreeInfo[] availbleTrees = rc.senseNearbyTrees(rc.getType().bodyRadius + 1f, Team.NEUTRAL);
 		for (TreeInfo tree : availbleTrees) {
 			if (tree.containedBullets > 0) {
 				if (rc.canShake(tree.ID)) {

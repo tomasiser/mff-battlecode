@@ -34,22 +34,13 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
      * Shooting in fact means hitting with the axe.
      */
     @Override
-    public boolean shootSingle(RobotInfo targetRobot) {
+    public boolean shoot(Direction dir) {
         try {
             rc.strike(); // strike anything
             return true;
         } catch (GameActionException e) {
             return false;
         }
-    }
-
-    /**
-     * Well the simplest burst is a burst of one bullet.
-     * @param targetRobot The robot to shoot at.
-     */
-    @Override
-    protected boolean shootBurst(RobotInfo targetRobot) {
-        return shootSingle(targetRobot);
     }
 
     /**
