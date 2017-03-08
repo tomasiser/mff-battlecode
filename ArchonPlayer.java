@@ -56,7 +56,7 @@ public strictfp class ArchonPlayer {
 
 
                 // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .15)) {
+                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
                     rc.hireGardener(dir);
                     if (!builtTreeGardener) builtTreeGardener = true;
                     else if (!builtBuilderGardener) builtBuilderGardener = true;
