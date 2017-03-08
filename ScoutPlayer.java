@@ -170,7 +170,7 @@ public strictfp class ScoutPlayer {
 
         if (state == EXPLORE_LOC && loc != null) {
             dir = rc.getLocation().directionTo(loc);
-            rc.setIndicatorDot(loc, 0, 0, 255);
+            //rc.setIndicatorDot(loc, 0, 0, 255);
         }
 
 
