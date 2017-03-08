@@ -56,7 +56,7 @@ public strictfp class ArchonPlayer {
 
 
                 // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
+                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .15)) {
                     rc.hireGardener(dir);
                     if (!builtTreeGardener) builtTreeGardener = true;
                     else if (!builtBuilderGardener) builtBuilderGardener = true;
@@ -64,7 +64,7 @@ public strictfp class ArchonPlayer {
 
                 // Move away from action
                 Direction away = (new Direction(myLocation, broadcaster.findNearestAction())).opposite();
-                // SharedUtils.tryMove(rc, away);
+                SharedUtils.tryMove(rc, away);
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -77,20 +77,30 @@ public strictfp class ArchonPlayer {
     }
 
     static void buyVictoryPointsIfNeeded() throws GameActionException {
-        int myVP = rc.getTeamVictoryPoints();
-        int enemyVP = rc.getOpponentVictoryPoints();
-        float bullets = rc.getTeamBullets();
-        float victoryPointCost = rc.getVictoryPointCost();
+        float bulletsToDonate = 0;
 
-        if (!shouldBuyVictoryPoints(myVP, enemyVP, bullets)) return;
+        if (rc.getRoundNum() == 2950) {
+            bulletsToDonate = rc.getTeamBullets();
+        } else {
+            int myVP = rc.getTeamVictoryPoints();
+            int enemyVP = rc.getOpponentVictoryPoints();
+            float bullets = rc.getTeamBullets();
+            float victoryPointCost = rc.getVictoryPointCost();
 
-        float bulletsToDonate = bullets * 0.3f;
-        bulletsToDonate = (float)Math.ceil(bulletsToDonate / victoryPointCost) * victoryPointCost;
+            if (!shouldBuyVictoryPoints(myVP, enemyVP, bullets)) return;
+
+            bulletsToDonate = bullets * 0.3f;
+            bulletsToDonate = (float)Math.ceil(bulletsToDonate / victoryPointCost) * victoryPointCost;
+        }
 
         rc.donate(bulletsToDonate);
     }
 
     static boolean shouldBuyVictoryPoints(int myVP, int enemyVP, float bullets) {
+        if (rc.getRoundNum() == 2950) {
+            return true;
+        }
+
         return bullets > 300f && (
             (myVP - 20 < enemyVP) || bullets > 3000f
         );

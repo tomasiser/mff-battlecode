@@ -554,7 +554,7 @@ public strictfp abstract class BasicCombatStrategy {
             score += shouldFireSingle(direction) ? 1f : 0f;
         }
 
-        return (score / directions.length) > 0.6f;
+        return (score / directions.length) > 0.5f;
     }
 
 }
