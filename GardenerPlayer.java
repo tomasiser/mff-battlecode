@@ -320,7 +320,7 @@ public strictfp class GardenerPlayer {
 							//build it!
 							if (freeDir != null) {       			
 								// Randomly attempt to build a unit in this direction
-								if (rc.canBuildRobot(RobotType.SOLDIER, freeDir) && Math.random() < .01) {
+								if (rc.canBuildRobot(RobotType.SOLDIER, freeDir) && Math.random() < .04) {
 									rc.buildRobot(RobotType.SOLDIER, freeDir);
 								} 
 								else if (rc.canBuildRobot(RobotType.LUMBERJACK, freeDir) && Math.random() < .001) {
