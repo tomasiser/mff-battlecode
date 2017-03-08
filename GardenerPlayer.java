@@ -12,6 +12,38 @@ enum MY_TYPE {
 	BUILDER,
 	UNKNOWN;
 }
+/* Class for holding relative position of some object */
+strictfp class diff {	
+	float dx;
+	float dy;
+	Direction dir;
+	diff(float dx, float dy){
+		this.dx = dx; 
+		this.dy = dy;
+		dir = new Direction(dx, dy);
+	}
+	
+	/**
+	 * Gets coordinates difference end - start.
+	 * */
+	diff(MapLocation start, MapLocation end) {
+		dx = end.x - start.x;
+		dy = end.y - start.y;
+	}
+	
+	/**
+	 * will add relative position to center
+	 * @param center Point to which diff is added
+	 * @return transformed position 
+	 * */
+	MapLocation add(MapLocation center) {
+		return center.translate(dx, dy);
+	}
+	MapLocation addChanged(MapLocation center, float reduction) {
+		float length = (float)Math.sqrt((double)(dx*dx + dy*dy)) - reduction;
+		return center.translate(dir.getDeltaX(length), dir.getDeltaY(length));
+	}
+}
 
 public strictfp class GardenerPlayer {
 
@@ -19,17 +51,39 @@ public strictfp class GardenerPlayer {
 
     static private Broadcaster broadcaster;
     static private MY_TYPE myType = MY_TYPE.UNKNOWN;
-	static void runGardener(RobotController rc) throws GameActionException {
-		
-		
-		int myLife = 0;	
-		//a direction, where the gardener wants to go
-		Direction dir = SharedUtils.randomDirection();
-		
+    static int myLife = 0;	
+    static Direction dir = SharedUtils.randomDirection();
+    static RobotController rc;
+    /*//to nefunguje, vzdalenost rohovych je moc velka
+    static diff[] treeLocations = new diff[]{
+    		new diff(3.015F,1.7407F),
+	    	new diff(-3.015F,-1.7407F),
+			new diff(2.01F,0F),
+		    new diff(1.005F,1.7407F),
+		    new diff(-1.005F,1.7407F),
+		    new diff(-2.01F,0F),
+		    new diff(-1.005F,-1.7407F),
+		    new diff(1.005F,-1.7407F)
+		};
+    */
+    static diff[] treeLocations = new diff[]{
+        	new diff(2.01F,2.01F),
+        	new diff(-2.01F,2.01F),
+        	new diff(-2.01F,-2.01F),
+        	new diff(2.01F,-2.01F),
+        	new diff(2.01F,0F),
+        	new diff(0F,2.01F),
+        	new diff(-2.01F,0F),
+        	new diff(0F,-2.01F)
+    	};
+    
+    static float rotation = 0;
+	static void runGardener(RobotController controller) throws GameActionException {
 		try {
 			//initialization of the gardener
-	        // System.out.println("I'm a KSTT gardener!");
+	        System.out.println("I'm a KSTT gardener!");
 	        broadcaster = new Broadcaster(rc);
+	        rc = controller;
 	        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(2F);
 	        //System.out.println("Location:" + rc.getLocation().toString());
 	        for(RobotInfo robot : nearbyRobots) {
@@ -65,168 +119,250 @@ public strictfp class GardenerPlayer {
 		
 		
         // The code you want your robot to perform every round should be in this loop  
-        //GARDENER:
-        if (myType == MY_TYPE.GARDENER) {
-    		boolean foundPlace = false;
-    		float baseFloat = (float)Math.random() * 2F * (float)Math.PI;
-    		//nema smysl si pamatovat TreeInfo, protoze se jen okopiruje
-    		List<MapLocation> myTrees = new ArrayList<>();
-	        while (true) {    	
-	            // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
-	            try {         	
-	            	broadcaster.refresh();
-	            	myLife++;
-	                // Listen for home archon's location - unused
-	                //int xPos = rc.readBroadcast(0);
-	                //int yPos = rc.readBroadcast(1);
-	                //MapLocation archonLoc = new MapLocation(xPos,yPos);
-	                
-	                if (myLife < 40) {
-	                	SharedUtils.tryMove(rc, dir);
-	                	if(myLife % 20 == 0) 
-	                		dir = SharedUtils.randomDirection();
-	                }
-	                else {
-	                	if (!foundPlace) {
-	                		if (rc.onTheMap(rc.getLocation(), 2.5F) && rc.senseNearbyTrees(2.9F).length == 0) {
-	                			foundPlace = true;
-	                		}
-	                		else {
-	                			if (myLife % 10 == 0)
-	                				dir = SharedUtils.randomDirection();
-	                			SharedUtils.tryMove(rc, dir);
-	                		}
-	                	}
-	                	else {
-	                		//check whether I have all built trees
-	                		List<Integer> toRemove = new ArrayList<>();
-	                		for (int id = 0; id < myTrees.size(); id++) {
-	                			TreeInfo myTree = rc.senseTreeAtLocation(myTrees.get(id));
-	                			if (myTree == null) {
-	                				//System.out.println("Tree disapeared!");
-	                				toRemove.add(id);
-	                			}
-	                			else {
-	                				//System.out.println("Tree here:" + myTree.getLocation().toString());
-	                				if (rc.canWater() && myTree.maxHealth - myTree.health > 3) {
-	                					rc.water(myTree.ID);
-	                				}
-	                			}
-	                		}
-	                		//remove destroyed trees
-	                		if (toRemove.size() > 0) {
-		                		for (int id = toRemove.size() - 1; id >= 0 ;id--) {
-		                			myTrees.remove(toRemove.get(id));
-		                		}
-	                		}
-	                		
-	                		//try to plant trees, if it makes sense
-		                	if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST) {
-		                		float angle = 0;
-		                		//look around for empty place for a tree
-		                		while (angle < 2*Math.PI) {
-		                			if (rc.canPlantTree(new Direction(angle + baseFloat))) {
-		                				break;
-		                			}
-		                			angle += 0.2;
-		                		}
-		                		//put it as nearby as possible
-		                		while (rc.canPlantTree(new Direction(angle + baseFloat)) && angle > 0) {
-		                			angle -= 0.01;
-		                		}
-		                		angle += 0.01;
-		                		
-		                		//build it!
-		                		if (angle < 2*Math.PI) {
-		                			Direction newDir = new Direction(angle + baseFloat);
-		                		    if (rc.canPlantTree(newDir)) {      			
-		                		    	rc.plantTree(newDir);
-		                		    	MapLocation loc = rc.getLocation().add(newDir, 2);
-			                			myTrees.add(loc);
-		                		    }
-		                		    else {
-		                		    	System.out.println("Error?" + newDir.toString());
-		                		    }
-		                		}       
-		                		//the position is not good anymore
-		                		else if (myTrees.isEmpty()) {
-		                			foundPlace = false;
-		                			SharedUtils.tryMove(rc, SharedUtils.randomDirection());
-		                		}
-		                	}
-	                	}
-	                }
-	                
-	                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
-	                Clock.yield();
-	
-	            } catch (Exception e) {
-	                System.out.println("KSTT Gardener Exception");
-	                e.printStackTrace();
-	            }
+		while (true) {
+	        //GARDENER:
+			if (myType == MY_TYPE.GARDENER) {
+		        	executeGardener();
+		        }
+			
+	        //BUILDER
+	        else {
+	        	executeBuilder();
 	        }
-        }
-        //BUILDER
-        else {
-        	float baseFloat = dir.radians;
-    	  while (true) {    	
+		}
+    }
+	
+	/* Gardener execution code */
+	static void executeGardener() {		
+		boolean foundPlace = false;
+		boolean onPlace = false;
+		boolean lumberjackBuilt = false;
+		MapLocation finalLocation = null;
+		float baseFloat = (float)Math.random() * 2F * (float)Math.PI;
+		//nema smysl si pamatovat TreeInfo, protoze se jen okopiruje
+		//List<MapLocation> myTrees = new ArrayList<>();
+		boolean[] builtTrees = new boolean[treeLocations.length];
+		
+        while (true) {    	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {         	
-            	broadcaster.refresh();
+            	//broadcaster.refresh(); //TODO
+            	myLife++;
+                // Listen for home archon's location - unused
+                //int xPos = rc.readBroadcast(0);
+                //int yPos = rc.readBroadcast(1);
+                //MapLocation archonLoc = new MapLocation(xPos,yPos);
+            	SharedUtils.tryShake(rc);
+            	
+            	if (!foundPlace) {
+            		finalLocation = tryFindHole();
+            		if (finalLocation != null) {
+            			foundPlace = true;
+            		}
+            		else if (!lumberjackBuilt && myLife > 10 &&  rc.getTeamBullets() >= RobotType.LUMBERJACK.bulletCost) {
+            			Direction lumberLoc = SharedUtils.tryFindPlace(rc, baseFloat);
+        				if (lumberLoc != null && rc.canBuildRobot(RobotType.LUMBERJACK, lumberLoc)) {
+        					rc.buildRobot(RobotType.LUMBERJACK, lumberLoc);
+        					lumberjackBuilt = true;
+        				}
+            		}
+        			SharedUtils.tryMove(rc, SharedUtils.randomDirection());
+            		
+            	}
+            	else {
+            		if (!onPlace) {
+                		if (rc.getLocation().distanceTo(finalLocation) >= RobotType.GARDENER.strideRadius) {
+                			SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
+                		}
+                		else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
+                			if (rc.canMove(finalLocation)) {
+                				rc.move(finalLocation);
+                				onPlace = true;
+                			}
+                			else 
+                				SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
+                		}
+            		}
+            		else {
+                		//check whether I have built all trees
+                		//List<Integer> toRemove = new ArrayList<>();
+                		int wantBuild = -1;
+                		for (int id = 0; id < builtTrees.length; id++) {
+                			//if the tree is already built
+                			if (builtTrees[id] == true) {
+	                			TreeInfo myTree = rc.senseTreeAtLocation(treeLocations[id].add(finalLocation));
+	                			if (myTree == null) {
+	                				//System.out.println("Tree disapeared!");
+	                				builtTrees[id] = false;
+	                			}
+	                			else {
+	                				if (rc.canWater() && myTree.maxHealth - myTree.health > 4.9F) {
+	                					//System.out.println("Want water:" + myTree.getLocation().toString() + ",dist = " + rc.getLocation().distanceTo(myTree.getLocation()));
+	                					if (rc.canWater(myTree.ID))
+	                						rc.water(myTree.ID);
+	                				}
+	                			}
+                			}
+                			//tree not yet built
+                			else if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST) {
+                				if (wantBuild < 0 && !rc.isCircleOccupiedExceptByThisRobot(treeLocations[id].add(finalLocation), 1F)) {
+                					wantBuild = id;
+                				}
+                			}
+                		}
+                		if (wantBuild >= 0) {
+                			//primy posun
+                			if (!rc.isCircleOccupiedExceptByThisRobot(treeLocations[wantBuild].addChanged(finalLocation, 2F), 1F) &&
+                					rc.canMove(treeLocations[wantBuild].addChanged(finalLocation, 2F))) {
+                				rc.move(treeLocations[wantBuild].addChanged(finalLocation, 2F));
+                				if (rc.getLocation().distanceTo(treeLocations[wantBuild].addChanged(finalLocation, 2F)) < 0.005) {
+                					rc.plantTree(treeLocations[wantBuild].dir);
+                					builtTrees[wantBuild] = true;
+                				}
+                			}
+                			//TODO rozb�hat
+                			//kolmo zprava
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F), 1F) && 
+                					treeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F))) {
+                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx,  0.01F));
+                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx,  0)) < 0.005) {
+                					rc.plantTree(Direction.NORTH);
+                					builtTrees[wantBuild] = true;
+                				}
+                			}
+                			
+                			//kolmo zleva
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F), 1F) && 
+                					treeLocations[wantBuild].dy < 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F))) {
+                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F));
+                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx, -0.001F)) < 0.005) {
+                					rc.plantTree(Direction.SOUTH);
+                					builtTrees[wantBuild] = true;
+                				}
+                			}
+                			
+                			//kolmo shora
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(0.01F, treeLocations[wantBuild].dy), 1F) && 
+                					treeLocations[wantBuild].dx > 0 && rc.canMove(finalLocation.translate(0.01F, treeLocations[wantBuild].dy))) {
+                				rc.move(finalLocation.translate(0.01F, treeLocations[wantBuild].dy));
+                				if (rc.getLocation().distanceTo(finalLocation.translate(0.01F, treeLocations[wantBuild].dy)) < 0.005) {
+                					rc.plantTree(Direction.EAST);
+                					builtTrees[wantBuild] = true;
+                				}
+                			}
+                			//kolmo zdola
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy), 1F) && 
+                					treeLocations[wantBuild].dx < 0 && rc.canMove(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy))) {
+                				rc.move(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy));
+                				if (rc.getLocation().distanceTo(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy)) < 0.005) {
+                					rc.plantTree(Direction.WEST);
+                					builtTrees[wantBuild] = true;
+                				}
+                			}
+                			
+                			//jinak se vrat na start
+                			else if (rc.canMove(finalLocation)) {
+                				rc.move(finalLocation);
+                			}
+                		}
+            		}
+            	}
+                
+                
+                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
+                Clock.yield();
+
+            } catch (Exception e) {
+                System.out.println("KSTT Gardener Exception");
+                e.printStackTrace();
+            }
+        }
+	}
+	
+	/* Builder execution code */
+	static void executeBuilder() {
+		boolean spaceProblemSolved = false;
+		float baseFloat = dir.radians;
+	    while (true) {    	
+        // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
+            try {         	
+            	//broadcaster.refresh();
             	myLife++;
                 // Listen for home archon's location - unused (yet)
                 //int xPos = rc.readBroadcast(0);
                 //int yPos = rc.readBroadcast(1);
                 //MapLocation archonLoc = new MapLocation(xPos,yPos);
-                
+            	SharedUtils.tryShake(rc);
                 if (myLife < 5) {
                 	SharedUtils.tryMove(rc, dir);
                 }
                 
                 else {
                 	//can build, so maybe do it (TODO)
-                	if (rc.isBuildReady() && rc.getTeamBullets() > 180) {           		
-                		//look around for empty place for non-tank unit
-                		float angle = 0;
-                		while (angle < 2*Math.PI) {
-                			if (rc.canBuildRobot(RobotType.SOLDIER, new Direction(angle + baseFloat))) {
-                				break;
-                			}
-                			angle += 0.2;
-                		}
-                		
-                		//build it!
-                		if (angle < 2*Math.PI) {
-                			Direction newDir = new Direction(angle + baseFloat);
-                			
-      		                // Randomly attempt to build a unit in this direction
-      		                if (rc.canBuildRobot(RobotType.SOLDIER, newDir) && Math.random() < .005) {
-      		                    rc.buildRobot(RobotType.SOLDIER, newDir);
-      		                } 
-      		                else if (rc.canBuildRobot(RobotType.LUMBERJACK, newDir) && Math.random() < .005) {
-      		                    rc.buildRobot(RobotType.LUMBERJACK, newDir);
-      		                }
-      		                
-      		                else if (rc.canBuildRobot(RobotType.SCOUT, newDir) && Math.random() < .005) {
-    		                    rc.buildRobot(RobotType.SCOUT, newDir);
-    		                }
-      		                //tank only sometimes possible
-      		                else if (rc.canBuildRobot(RobotType.TANK, newDir) && Math.random() < .005) {
-  		                        rc.buildRobot(RobotType.TANK, newDir);
-  		                    }
-                		} 	                	
+                	if (rc.isBuildReady() && rc.getTeamBullets() > 170) { 
+
+						if (!spaceProblemSolved) {
+							MapLocation hole = tryFindHole();
+							if (hole != null) {
+								spaceProblemSolved = true;
+							}
+							else if (rc.getTeamBullets() >= RobotType.LUMBERJACK.bulletCost) {
+								Direction lumberLoc = SharedUtils.tryFindPlace(rc, baseFloat);
+								if (lumberLoc != null && rc.canBuildRobot(RobotType.LUMBERJACK, lumberLoc)) {
+									rc.buildRobot(RobotType.LUMBERJACK, lumberLoc);
+									spaceProblemSolved = true;
+								}
+							}
+						} else {
+							//look around for empty place for non-tank unit
+							Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
+							
+							//build it!
+							if (freeDir != null) {       			
+								// Randomly attempt to build a unit in this direction
+								if (rc.canBuildRobot(RobotType.SOLDIER, freeDir) && Math.random() < .01) {
+									rc.buildRobot(RobotType.SOLDIER, freeDir);
+								} 
+								else if (rc.canBuildRobot(RobotType.LUMBERJACK, freeDir) && Math.random() < .001) {
+									rc.buildRobot(RobotType.LUMBERJACK, freeDir);
+								}
+								
+								else if (rc.canBuildRobot(RobotType.SCOUT, freeDir) && Math.random() < .005) {
+									rc.buildRobot(RobotType.SCOUT, freeDir);
+								}
+								//tank only sometimes possible
+								else if (rc.canBuildRobot(RobotType.TANK, freeDir) && Math.random() < .01) {
+									rc.buildRobot(RobotType.TANK, freeDir);
+								}
+							} 	     
+						}           	
                 	}
                 	SharedUtils.tryMove(rc, SharedUtils.randomDirection());
                 }
                 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
-
-  	            } catch (Exception e) {
-  	                System.out.println("KSTT Gardener Exception");
-  	                e.printStackTrace();
-  	            }
-  	        }
+            
+            } catch (Exception e) {
+                System.out.println("KSTT Gardener Exception");
+                e.printStackTrace();
+            }
         }
-    }
+	}
+	
+	static MapLocation tryFindHole() throws GameActionException {
+		float range = 3.05F;
+		for (int i = 0; i < 50; i++) {
+			dir = SharedUtils.randomDirection();
+			float dist = (float)(Math.random() * (RobotType.GARDENER.sensorRadius - range));
+			//TODO
+			if (!rc.isCircleOccupiedExceptByThisRobot(rc.getLocation().add(dir, dist), range) && rc.onTheMap(rc.getLocation().add(dir, dist), range)) {
+				return rc.getLocation().add(dir, dist);
+			}
+			
+		}
+		return null;
+	}
 }
+
+

@@ -10,6 +10,8 @@ public strictfp class ArchonPlayer {
     static RobotController rc;
 
     static boolean mainArchon = true;
+    static boolean builtTreeGardener = false;
+    static boolean builtBuilderGardener = false;
 
     static void runArchon(RobotController rcon) throws GameActionException {
         // System.out.println("I'm a KSTT archon!");
@@ -47,15 +49,22 @@ public strictfp class ArchonPlayer {
                 }
 
                 // Generate a random direction
-                Direction dir = SharedUtils.randomDirection();
+                Direction dir;
+                if (builtTreeGardener && builtBuilderGardener) dir = SharedUtils.randomDirection();
+                else if (!builtTreeGardener) dir = SharedUtils.randomLeftRightDirection(false);
+                else dir = SharedUtils.randomLeftRightDirection(true);
+
 
                 // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && Math.random() < .01) {
+                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .015)) {
                     rc.hireGardener(dir);
+                    if (!builtTreeGardener) builtTreeGardener = true;
+                    else if (!builtBuilderGardener) builtBuilderGardener = true;
                 }
 
-                // Move randomly
-                SharedUtils.tryMove(rc, SharedUtils.randomDirection());
+                // Move away from action
+                Direction away = (new Direction(myLocation, broadcaster.findNearestAction())).opposite();
+                SharedUtils.tryMove(rc, away);
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
