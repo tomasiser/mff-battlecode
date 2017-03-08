@@ -35,7 +35,7 @@ public strictfp class ScoutPlayer {
     static RobotInfo[] robots;
 
 	static void runScout(RobotController rc) throws GameActionException {
-        System.out.println("I'm a KSTT scout!");
+        // System.out.println("I'm a KSTT scout!");
         broadcaster = new Broadcaster(rc);
         state = EXPLORE_DIR;
         dir = randomDirection();
@@ -134,9 +134,12 @@ public strictfp class ScoutPlayer {
     {
         for(RobotInfo robot : robots)
         {
-            if(robot.getTeam() != rc.getTeam() && robot.getType() == RobotType.ARCHON)
-            {
-                broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
+            if(robot.getTeam() != rc.getTeam()) {
+                if (robot.getType() == RobotType.ARCHON) {
+                    broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
+                } else if (robotIsDangerous(robot)) {
+                    broadcaster.reportHelpNeeded();
+                }
             }
         }
     }

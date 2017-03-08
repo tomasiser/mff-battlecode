@@ -12,7 +12,7 @@ public strictfp class ArchonPlayer {
     static boolean mainArchon = true;
 
     static void runArchon(RobotController rcon) throws GameActionException {
-        System.out.println("I'm a KSTT archon!");
+        // System.out.println("I'm a KSTT archon!");
 
         rc = rcon;
         broadcaster = new Broadcaster(rc);
