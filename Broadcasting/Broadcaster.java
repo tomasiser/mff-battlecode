@@ -144,30 +144,72 @@ public strictfp class Broadcaster {
         return archonLocations[idx].location;
     }
 
+    /**
+     * Find the nearest position where some action is needed.
+     * @return The position of the nearest action.
+     */
     public MapLocation findNearestAction() {
-        int roundNumber = rc.getRoundNum();
         MapLocation origin = rc.getLocation();
+        MapLocation nearestHelp = findNearestHelp();
+        MapLocation nearestArchon = findNearestArchon();
 
-        MapLocation nearestAction = origin;
+        if (nearestArchon == null && nearestHelp == null) {
+            return origin; // when no target is known, stay where you are
+        } else if (nearestArchon == null) { // when some of the targets is not present, just return the other one
+            return nearestHelp; // is not null
+        } else if (nearestHelp == null) {
+            return nearestArchon; // is not null
+        }
+
+        if (origin.distanceSquaredTo(nearestHelp) < origin.distanceSquaredTo(nearestArchon)) {
+            return nearestHelp;
+        } else {
+            return nearestArchon;
+        }
+    }
+
+    /**
+     * Find the nearest point the unit can defend.
+     * @return The nearest position where some mate needs help or null.
+     */
+    public MapLocation findNearestHelp() {
+        MapLocation origin = rc.getLocation();
+        MapLocation nearestAction = null;
         float nearestDistance = 9999f;
+        int roundNumber = rc.getRoundNum();
+
         for (int i = 0; i < MAX_HELP_NEEDED; ++i) {
             HelpNeededLocation loc = helpNeededLocations[i];
             if (loc.hasExpired(roundNumber)) continue;
-            float distance = loc.location.distanceTo(origin);
-            if (distance < nearestDistance) {
+            float distance = loc.location.distanceSquaredTo(origin);
+            if (nearestAction == null || distance < nearestDistance) {
                 nearestAction = loc.location;
                 nearestDistance = distance;
             }
         }
+
+        return nearestAction;
+    }
+
+    /**
+     * Find the nearest known position the unit can attack.
+     * @return The position of the archon or null.
+     */
+    public MapLocation findNearestArchon() {
+        MapLocation origin = rc.getLocation();
+        MapLocation nearestAction = null;
+        float nearestDistance = 9999f;
+
         for (int i = 0; i < enemyArchonCount; ++i) {
             ArchonLocation loc = archonLocations[i];
             if (loc.isDead()) continue;
-            float distance = loc.location.distanceTo(origin);
-            if (distance < nearestDistance) {
+            float distance = loc.location.distanceSquaredTo(origin);
+            if (nearestAction == null || distance < nearestDistance) {
                 nearestAction = loc.location;
                 nearestDistance = distance;
             }
         }
+
         return nearestAction;
     }
 

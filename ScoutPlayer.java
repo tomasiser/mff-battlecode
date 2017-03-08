@@ -134,9 +134,12 @@ public strictfp class ScoutPlayer {
     {
         for(RobotInfo robot : robots)
         {
-            if(robot.getTeam() != rc.getTeam() && robot.getType() == RobotType.ARCHON)
-            {
-                broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
+            if(robot.getTeam() != rc.getTeam()) {
+                if (robot.getType() == RobotType.ARCHON) {
+                    broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
+                } else if (robotIsDangerous(robot)) {
+                    broadcaster.reportHelpNeeded();
+                }
             }
         }
     }

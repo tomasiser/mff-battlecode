@@ -9,7 +9,7 @@ public strictfp class SharedUtils {
      * Returns a random Direction
      * @return a random Direction
      */
-    static Direction randomDirection() {
+    public static Direction randomDirection() {
         return new Direction((float)Math.random() * 2 * (float)Math.PI);
     }
 
@@ -20,7 +20,7 @@ public strictfp class SharedUtils {
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryMove(RobotController rc, Direction dir) throws GameActionException {
+    public static boolean tryMove(RobotController rc, Direction dir) throws GameActionException {
         return tryMove(rc, dir, 20, 3);
     }
 
@@ -49,7 +49,7 @@ public strictfp class SharedUtils {
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
+    public static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
 
         // First, try intended direction
         if (rc.canMove(dir)) {
@@ -87,20 +87,32 @@ public strictfp class SharedUtils {
      * @param bullet The bullet in question
      * @return True if the line of the bullet's path intersects with this robot's current position.
      */
-    static boolean willCollideWithMe(RobotController rc, BulletInfo bullet) {
+    public static boolean willCollideWithMe(RobotController rc, BulletInfo bullet) {
         return willCollideWithMe(rc, bullet, 1.0);
     }
 
-    static boolean willCollideWithMe(RobotController rc, BulletInfo bullet, double cf) {
+    public static boolean willCollideWithMe(RobotController rc, BulletInfo bullet, double cf) {
         MapLocation myLocation = rc.getLocation();
 
         // Get relevant bullet information
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
 
+        return willCollide(bulletLocation, myLocation, cf*rc.getType().bodyRadius, propagationDirection);
+    }
+
+    /**
+     * Calculate if the aims at the target.
+     * @param bulletLocation
+     * @param targetLocation
+     * @param targetRadius
+     * @param propagationDirection
+     * @return
+     */
+    public static boolean willCollide(MapLocation bulletLocation, MapLocation targetLocation, float targetRadius, Direction propagationDirection) {
         // Calculate bullet relations to this robot
-        Direction directionToRobot = bulletLocation.directionTo(myLocation);
-        float distToRobot = bulletLocation.distanceTo(myLocation);
+        Direction directionToRobot = bulletLocation.directionTo(targetLocation);
+        float distToRobot = bulletLocation.distanceTo(targetLocation);
         float theta = propagationDirection.radiansBetween(directionToRobot);
 
         // If theta > 90 degrees, then the bullet is traveling away from us and we can break early
@@ -113,8 +125,8 @@ public strictfp class SharedUtils {
         // This corresponds to the smallest radius circle centered at our location that would intersect with the
         // line that is the path of the bullet.
         float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
-
-        return (perpendicularDist <= cf*rc.getType().bodyRadius);
+      
+        return (perpendicularDist <= targetRadius);
     }
 
     static Direction getDodgeDirection(RobotController rc, BodyInfo bullet, int preferredDir)
@@ -129,7 +141,7 @@ public strictfp class SharedUtils {
         return candidate;
     }
 
-    static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
+    public static Direction getDodgeDirection(RobotController rc, BulletInfo bullet)
     {
         MapLocation myLocation = rc.getLocation();
         Direction relativeDirection = bullet.getLocation().directionTo(myLocation);
@@ -142,7 +154,7 @@ public strictfp class SharedUtils {
         return candidate;
     }
 
-    static boolean robotIsDangerous(RobotInfo info)
+    public static boolean robotIsDangerous(RobotInfo info)
     {
         switch (info.getType()) {
             case ARCHON:
