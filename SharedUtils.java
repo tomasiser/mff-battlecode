@@ -98,7 +98,7 @@ public strictfp class SharedUtils {
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
 
-        return willCollide(bulletLocation, myLocation, (float)cf*rc.getType().bodyRadius, propagationDirection);
+        return willCollide(bulletLocation, myLocation, (float) cf * rc.getType().bodyRadius, propagationDirection);
     }
 
     /**
@@ -156,7 +156,12 @@ public strictfp class SharedUtils {
 
     public static boolean robotIsDangerous(RobotInfo info)
     {
-        switch (info.getType()) {
+        return robotTypeIsDangerous(info.getType());
+    }
+
+    public static boolean robotTypeIsDangerous(RobotType type)
+    {
+        switch (type) {
             case ARCHON:
             case GARDENER:
             case SCOUT:
