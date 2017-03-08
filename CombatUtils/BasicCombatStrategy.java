@@ -477,8 +477,6 @@ public strictfp abstract class BasicCombatStrategy {
      */
     private void checkIfIKilledArchon() {
         if (lastTarget != null && lastTarget.getType() == RobotType.ARCHON) {
-            System.out.println(lastTarget.getHealth());
-
             if (isDead(lastTarget)) {
                 System.out.println("ARCHON is DEAD!!");
                 try {
