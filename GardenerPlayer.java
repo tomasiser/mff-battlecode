@@ -220,7 +220,7 @@ public strictfp class GardenerPlayer {
                 					builtTrees[wantBuild] = true;
                 				}
                 			}
-                			//TODO rozbìhat
+                			//TODO rozbï¿½hat
                 			//kolmo zprava
                 			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F), 1F) && 
                 					treeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F))) {
@@ -281,6 +281,7 @@ public strictfp class GardenerPlayer {
 	
 	/* Builder execution code */
 	static void executeBuilder() {
+		boolean spaceProblemSolved = false;
 		float baseFloat = dir.radians;
 	    while (true) {    	
         // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
@@ -299,28 +300,42 @@ public strictfp class GardenerPlayer {
                 else {
                 	//can build, so maybe do it (TODO)
                 	if (rc.isBuildReady() && rc.getTeamBullets() > 170) { 
-                		
-                		//look around for empty place for non-tank unit
-                		Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
-                		
-                		//build it!
-                		if (freeDir != null) {       			
-      		                // Randomly attempt to build a unit in this direction
-      		                if (rc.canBuildRobot(RobotType.SOLDIER, freeDir) && Math.random() < .01) {
-      		                    rc.buildRobot(RobotType.SOLDIER, freeDir);
-      		                } 
-      		                else if (rc.canBuildRobot(RobotType.LUMBERJACK, freeDir) && Math.random() < .001) {
-      		                    rc.buildRobot(RobotType.LUMBERJACK, freeDir);
-      		                }
-      		                
-      		                else if (rc.canBuildRobot(RobotType.SCOUT, freeDir) && Math.random() < .005) {
-    		                    rc.buildRobot(RobotType.SCOUT, freeDir);
-    		                }
-      		                //tank only sometimes possible
-      		                else if (rc.canBuildRobot(RobotType.TANK, freeDir) && Math.random() < .01) {
-  		                        rc.buildRobot(RobotType.TANK, freeDir);
-  		                    }
-                		} 	                	
+
+						if (!spaceProblemSolved) {
+							MapLocation hole = tryFindHole();
+							if (hole != null) {
+								spaceProblemSolved = true;
+							}
+							else if (rc.getTeamBullets() >= RobotType.LUMBERJACK.bulletCost) {
+								Direction lumberLoc = SharedUtils.tryFindPlace(rc, baseFloat);
+								if (lumberLoc != null && rc.canBuildRobot(RobotType.LUMBERJACK, lumberLoc)) {
+									rc.buildRobot(RobotType.LUMBERJACK, lumberLoc);
+									spaceProblemSolved = true;
+								}
+							}
+						} else {
+							//look around for empty place for non-tank unit
+							Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
+							
+							//build it!
+							if (freeDir != null) {       			
+								// Randomly attempt to build a unit in this direction
+								if (rc.canBuildRobot(RobotType.SOLDIER, freeDir) && Math.random() < .01) {
+									rc.buildRobot(RobotType.SOLDIER, freeDir);
+								} 
+								else if (rc.canBuildRobot(RobotType.LUMBERJACK, freeDir) && Math.random() < .001) {
+									rc.buildRobot(RobotType.LUMBERJACK, freeDir);
+								}
+								
+								else if (rc.canBuildRobot(RobotType.SCOUT, freeDir) && Math.random() < .005) {
+									rc.buildRobot(RobotType.SCOUT, freeDir);
+								}
+								//tank only sometimes possible
+								else if (rc.canBuildRobot(RobotType.TANK, freeDir) && Math.random() < .01) {
+									rc.buildRobot(RobotType.TANK, freeDir);
+								}
+							} 	     
+						}           	
                 	}
                 	SharedUtils.tryMove(rc, SharedUtils.randomDirection());
                 }

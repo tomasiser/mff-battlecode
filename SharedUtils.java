@@ -13,6 +13,14 @@ public strictfp class SharedUtils {
         return new Direction((float)Math.random() * 2 * (float)Math.PI);
     }
 
+    public static Direction randomLeftRightDirection(boolean right) {
+        float angle = 0f;
+        if (right) angle = (float)Math.random() * (float)Math.PI / 2f;
+        else angle = (float)Math.PI / 2f + (float)Math.random() * (float)Math.PI / 2f;
+        if (Math.random() < .5) angle *= -1f;
+        return new Direction(angle);
+    }
+
     /**
      * Attempts to move in a given direction, while avoiding small obstacles directly in the path.
      *
