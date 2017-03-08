@@ -98,7 +98,7 @@ public strictfp class SharedUtils {
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
 
-        return willCollide(bulletLocation, myLocation, (float) cf * rc.getType().bodyRadius, propagationDirection);
+        return willCollide(bulletLocation, myLocation, (float)cf*rc.getType().bodyRadius, propagationDirection);
     }
 
     /**
@@ -156,12 +156,7 @@ public strictfp class SharedUtils {
 
     public static boolean robotIsDangerous(RobotInfo info)
     {
-        return robotTypeIsDangerous(info.getType());
-    }
-
-    public static boolean robotTypeIsDangerous(RobotType type)
-    {
-        switch (type) {
+        switch (info.getType()) {
             case ARCHON:
             case GARDENER:
             case SCOUT:
@@ -174,4 +169,65 @@ public strictfp class SharedUtils {
         return false;
     }
     
+    
+    /**
+	 * Finds first hole with radius 1 clockwise starting by baseAngle
+	 * @param baseAngle Angle from which hole is searched
+	 * @return found direction, or null, if not found
+	 * */
+    public static Direction tryFindPlace(RobotController rc, float baseAngle) throws GameActionException {
+    	return tryFindPlace(rc, baseAngle, 1F);
+    }
+    
+    /**
+	 * Finds first hole with given radius clockwise starting by baseAngle
+	 * @param baseAngle Angle from which hole is searched
+	 * @param radius hole radius
+	 * @return found direction, or null, if not found
+	 * */
+	public static Direction tryFindPlace(RobotController rc, float baseAngle, float radius) throws GameActionException {
+		float angle = baseAngle;
+		float distance = rc.getType().bodyRadius + radius + 0.01F;
+		MapLocation myLocation = rc.getLocation();
+		
+		//look around for empty place 
+		while (angle < 2*Math.PI + baseAngle) {
+			if (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
+					rc.onTheMap(myLocation.add(angle, distance), radius)) {
+				break;
+			}
+			angle += 0.2;
+		}
+		//put it as nearby as possible
+		while (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
+				rc.onTheMap(myLocation.add(angle, distance), radius) && angle > baseAngle) {
+			angle -= 0.01;
+		}
+		angle += 0.01;
+		
+		//check it!
+		if (angle < 2*Math.PI + baseAngle) {
+			return new Direction(angle);
+		}
+		else
+			return null;
+	}
+	
+	/**
+	 * Looks around for shakeable tree (with some bullets)
+	 * @param rc controller
+	 * @return true, if some tree was shaken
+	 * */
+	public static boolean tryShake(RobotController rc) throws GameActionException {
+		TreeInfo[] availbleTrees = rc.senseNearbyTrees(2F, Team.NEUTRAL);
+		for (TreeInfo tree : availbleTrees) {
+			if (tree.containedBullets > 0) {
+				if (rc.canShake(tree.ID)) {
+					rc.shake(tree.ID);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }
