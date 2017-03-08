@@ -228,7 +228,7 @@ public strictfp class Broadcaster {
         return nearestAction;
     }
 
-    public void showDebugCircles() {
+    public void showDebugCircles() {/*
         int roundNumber = rc.getRoundNum();
 
         for (int i = 0; i < MAX_HELP_NEEDED; ++i) {
@@ -240,6 +240,6 @@ public strictfp class Broadcaster {
             ArchonLocation loc = archonLocations[i];
             if (loc.isDead()) continue;
             rc.setIndicatorDot(loc.location, 255, 0, 0);
-        }
+        }*/
     }
 }

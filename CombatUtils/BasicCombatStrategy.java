@@ -95,8 +95,8 @@ public strictfp abstract class BasicCombatStrategy {
 
         // DEBUG: place a debug flag on the goal (if any)
         if (hasGoal()) {
-            rc.setIndicatorDot(goal, 0, 255, 0);
-            rc.setIndicatorLine(me, goal, 0, 255, 0);
+            //rc.setIndicatorDot(goal, 0, 255, 0);
+            //rc.setIndicatorLine(me, goal, 0, 255, 0);
         }
 
         lookAround();
@@ -149,8 +149,8 @@ public strictfp abstract class BasicCombatStrategy {
      */
     private void dodgeBullet(BulletInfo dangerousBullet) {
         // DEBUG: mark the bullet and the robot it endangers
-        rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
-        rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
+        //rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
+        //rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
 
         try {
             SharedUtils.tryMove(rc, SharedUtils.getDodgeDirection(rc, dangerousBullet));
@@ -300,7 +300,7 @@ public strictfp abstract class BasicCombatStrategy {
 
         // DEBUG: mark the target
         if (nearest != null) {
-            rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
+            //rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
         }
 
         return nearest;
