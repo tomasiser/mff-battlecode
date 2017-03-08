@@ -146,7 +146,7 @@ public strictfp class ScoutPlayer {
 
     static void pickMove(RobotController rc) throws GameActionException {
         dodgeDir++;
-        if (Math.random() < .03) {
+        if (Math.random() < .5) {
             dir = randomDirection();
             state = EXPLORE_DIR;
         }
@@ -164,7 +164,7 @@ public strictfp class ScoutPlayer {
     static void explore(RobotController rc) throws GameActionException {
         observe(rc);
 
-        if (Math.random() < .02) {
+        if (Math.random() < .03) {
             pickMove(rc);
         }
 
@@ -173,6 +173,10 @@ public strictfp class ScoutPlayer {
             rc.setIndicatorDot(loc, 0, 0, 255);
         }
 
+        if(state == EXPLORE_LOC && rc.getLocation().distanceTo(loc) < safeRadius)
+        {
+            state = EXPLORE_DIR;
+        }
 
         if (!avoidDangers(rc) && !trySimpleMove(rc, dir)) {
             pickMove(rc);
