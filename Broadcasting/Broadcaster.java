@@ -39,15 +39,23 @@ public strictfp class Broadcaster {
     static final int HELP_NEEDED_FIRST_CHANNEL = MAX_ARCHONS * ARCHON_LOC_LEN;
     static final int ARCHON_COUNT_CHANNEL = 0;
 
+    static final int GARDENER_ORIGIN_POINT = 50; // 2
+    static final int GARDENER_ORIGIN_DIRECTION = 52;
+    static final int GARDENER_CURRENT_TARGET = 53; // 2
+    static final int GARDENER_BUILD_DIRECTION = 55;
+    static final int GARDENER_LINE_NUMBER = 56;
+
     RobotController rc;
 
     int enemyArchonCount = 0;
 
     ArchonLocation[] archonLocations = new ArchonLocation[MAX_ARCHONS];
     HelpNeededLocation[] helpNeededLocations = new HelpNeededLocation[MAX_HELP_NEEDED];
+    public GardenerPlacementInfo gardenerInfo;
 
     public Broadcaster(RobotController rc) {
         this.rc = rc;
+        gardenerInfo = new GardenerPlacementInfo(rc);
         for (int i = 0; i < MAX_ARCHONS; ++i) {
             archonLocations[i] = new ArchonLocation();
         }

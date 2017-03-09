@@ -1,5 +1,6 @@
 package KSTTForTheWin;
 import KSTTForTheWin.Broadcasting.Broadcaster;
+import KSTTForTheWin.Broadcasting.GardenerPlacementInfo;
 import battlecode.common.*;
 
 public strictfp class ArchonPlayer {
@@ -38,10 +39,16 @@ public strictfp class ArchonPlayer {
                     }
                     if (mainArchon) {
                         System.out.println("Archon " + rc.getID() + " is main!");
+                        Direction toEnemy = new Direction(myLocation, enemyArchonLocations[0]);
+                        broadcaster.gardenerInfo.initialize(myLocation.add(toEnemy, GardenerPlacementInfo.LINE_DISTANCE / 2f), toEnemy);
                     }
                 } else {
                     broadcaster.refresh();
+                    broadcaster.gardenerInfo.refresh();
                     broadcaster.showDebugCircles();
+                    broadcaster.gardenerInfo.showDebugCircles();
+                    if (roundNum % 75 == 0) broadcaster.gardenerInfo.targetNotFound();
+                    else if (roundNum % 25 == 0) broadcaster.gardenerInfo.targetAcquired();
                 }
 
                 if (mainArchon && roundNum % 50 == 0) {
