@@ -25,7 +25,8 @@ public strictfp class ScoutPlayer {
     static int trackedArchon = 0;
     static states state = EXPLORE_DIR;
     static int dodgeDir = 0;
-
+    static boolean wantShot = false;
+    static MapLocation target;
     //// See if there are any nearby enemy robots
     //RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
     //MapLocation myLocation = rc.getLocation();
@@ -60,7 +61,11 @@ public strictfp class ScoutPlayer {
                         track(rc);
                         break;
                 }
-
+                
+                if (wantShot) {
+                	rc.fireSingleShot(rc.getLocation().directionTo(target));
+                	wantShot = false;
+                }
                 Clock.yield();
 
             } catch (Exception e) {
@@ -137,8 +142,18 @@ public strictfp class ScoutPlayer {
             if(robot.getTeam() != rc.getTeam()) {
                 if (robot.getType() == RobotType.ARCHON) {
                     broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
+                    if (!wantShot) {
+                    	wantShot = true;
+                    	target = robot.location;
+                    }
                 } else if (robotIsDangerous(robot)) {
                     broadcaster.reportHelpNeeded();
+                }
+                else if (robot.getType() == RobotType.GARDENER) {
+                	if (!wantShot) {
+                		wantShot = true;
+                		target = robot.location;
+                	}
                 }
             }
         }
