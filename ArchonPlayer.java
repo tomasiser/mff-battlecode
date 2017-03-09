@@ -9,10 +9,10 @@ public strictfp class ArchonPlayer {
 
     static Broadcaster broadcaster;
     static RobotController rc;
-
+    static int built = 0;
     static boolean mainArchon = true;
     static boolean builtTreeGardener = false;
-    static boolean builtBuilderGardener = false;
+    //static boolean builtBuilderGardener = false;
 
     static void runArchon(RobotController rcon) throws GameActionException {
         // System.out.println("I'm a KSTT archon!");
@@ -28,6 +28,8 @@ public strictfp class ArchonPlayer {
 
                 int roundNum = rc.getRoundNum();
                 MapLocation myLocation = rc.getLocation();
+                SharedUtils.tryShake(rc);
+                SharedUtils.tryToWin(rc);
 
                 if (roundNum <= 1) {
                     MapLocation[] enemyArchonLocations = rc.getInitialArchonLocations(rc.getTeam().opponent());
@@ -48,23 +50,29 @@ public strictfp class ArchonPlayer {
                     broadcaster.showDebugCircles();
                     broadcaster.gardenerInfo.showDebugCircles();
                 }
-
+                
+                
                 if (mainArchon && roundNum % 50 == 0) {
                     buyVictoryPointsIfNeeded();
                 }
 
                 // Generate a random direction
+                
                 Direction dir;
+                dir = SharedUtils.tryFindPlace(rc, broadcaster.gardenerInfo.originDirection.radians);
+                /*
                 if (builtTreeGardener && builtBuilderGardener) dir = SharedUtils.randomDirection();
                 else if (!builtTreeGardener) dir = SharedUtils.randomLeftRightDirection(false);
                 else dir = SharedUtils.randomLeftRightDirection(true);
-
+*/
 
                 // Randomly attempt to build a gardener in this direction
-                if (rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
-                    rc.hireGardener(dir);
+                if (dir!= null && rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
+                	//TEST:
+            		built++;
+                	rc.hireGardener(dir);
                     if (!builtTreeGardener) builtTreeGardener = true;
-                    else if (!builtBuilderGardener) builtBuilderGardener = true;
+                    //else if (!builtBuilderGardener) builtBuilderGardener = true;
                 }
 
                 // Move away from action

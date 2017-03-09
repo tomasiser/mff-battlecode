@@ -43,10 +43,12 @@ public strictfp class ScoutPlayer {
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
-
+        	SharedUtils.tryShake(rc);
+            SharedUtils.tryToWin(rc);
+        	
             Integer round = rc.getRoundNum();
             refreshCache(rc, round);
-            SharedUtils.tryShake(rc);
+            
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
                 switch(state)
@@ -63,7 +65,9 @@ public strictfp class ScoutPlayer {
                 }
                 
                 if (wantShot) {
-                	rc.fireSingleShot(rc.getLocation().directionTo(target));
+                	if (rc.canFireSingleShot()) {
+                		rc.fireSingleShot(rc.getLocation().directionTo(target));
+                	}
                 	wantShot = false;
                 }
                 Clock.yield();
