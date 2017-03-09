@@ -46,7 +46,7 @@ public strictfp class ScoutPlayer {
 
             Integer round = rc.getRoundNum();
             refreshCache(rc, round);
-
+            SharedUtils.tryShake(rc);
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
                 switch(state)

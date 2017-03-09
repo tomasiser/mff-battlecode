@@ -97,6 +97,7 @@ public strictfp class GardenerPlayer {
     static diff archonDist = new diff(10F, 0F);
     static diff gardenerDist = new diff(0F, -6.03F);
     static float rotation = 0; //TODO
+    static int unitsMade = 0;
 	static void runGardener(RobotController controller) throws GameActionException {
 		try {
 			/*//debug test
@@ -125,7 +126,8 @@ public strictfp class GardenerPlayer {
 					loc.invert();
 				}
 			}
-	        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(2F);
+			
+	        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(3F);
 	        //System.out.println("Location:" + rc.getLocation().toString());
 	        for(RobotInfo robot : nearbyRobots) {
 	        	//System.out.println("robot_dist: " + rc.getLocation().distanceTo(robot.getLocation()) + "Type:" + robot.type.toString());
@@ -135,6 +137,7 @@ public strictfp class GardenerPlayer {
 	        		//go away from Archon
 	        		dir = new Direction(robot.getLocation(), rc.getLocation());
 	        		//take role
+	        		/*
 	        		if (robot.getLocation().x < rc.getLocation().x) {
 	        			myType = MY_TYPE.BUILDER;
 	        			System.out.println("Type = BUILDER");
@@ -146,13 +149,22 @@ public strictfp class GardenerPlayer {
 	        			System.out.println("Type = GARDENER");
 	        			break;
 	        		}
+	        		*/
 	        	}
 	        }
+	        /*
 	        //if made from tree
 	        if (myType == MY_TYPE.UNKNOWN) {
 	        	//System.out.println("type = UNKNOWN");
 	        	myType = MY_TYPE.GARDENER;
-	        }
+	        }*/
+			
+			if (rc.getRoundNum() < 10 && RobotType.SCOUT.bulletCost <= rc.getTeamBullets()) {
+				Direction freeDir = SharedUtils.tryFindPlace(rc, 0);
+				if (freeDir != null && rc.canBuildRobot(RobotType.SCOUT, freeDir)) {
+					rc.buildRobot(RobotType.SCOUT, freeDir);
+				}
+			}
 		}
 		catch (Exception e) {
             System.out.println("KSTT Gardener Init Exception");
@@ -160,18 +172,20 @@ public strictfp class GardenerPlayer {
         }
 		
 		
-		myType = MY_TYPE.GARDENER;
+		
         // The code you want your robot to perform every round should be in this loop  
 		while (true) {
+			myType = MY_TYPE.GARDENER;
 	        //GARDENER:
 			if (myType == MY_TYPE.GARDENER) {
 		        	executeGardener();
 		        }
 			
 	        //BUILDER
+			/*
 	        else {
 	        	executeBuilder();
-	        }
+	        }*/
 		}
     }
 	
@@ -181,6 +195,7 @@ public strictfp class GardenerPlayer {
 		boolean onPlace = false;
 		boolean lumberjackBuilt = false;
 		MapLocation finalLocation = null;
+		float myHealth = rc.getHealth();
 		float baseFloat = (float)Math.random() * 2F * (float)Math.PI;
 		//nema smysl si pamatovat TreeInfo, protoze se jen okopiruje
 		//List<MapLocation> myTrees = new ArrayList<>();
@@ -189,7 +204,7 @@ public strictfp class GardenerPlayer {
         while (true) {    	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {         	
-            	//broadcaster.refresh(); //TODO
+            	broadcaster.refresh();
             	myLife++;
                 // Listen for home archon's location - unused
                 //int xPos = rc.readBroadcast(0);
@@ -281,58 +296,68 @@ public strictfp class GardenerPlayer {
                 				}
                 			}
                 			//TODO doresit pro nekolme uhly
-                			//kolmo zprava
-                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F), 1F) && 
-                					treeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
-                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx,  0F));
-                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx,  0F)) < 0.005) {
-                					rc.plantTree(Direction.NORTH);
-                					builtTrees[wantBuild] = true;
-                				}
+                			else if (rotation == 0) {
+	                			//kolmo zprava
+	                			if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F), 1F) && 
+	                					treeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
+	                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx,  0F));
+	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx,  0F)) < 0.005) {
+	                					rc.plantTree(Direction.NORTH);
+	                					builtTrees[wantBuild] = true;
+	                				}
+	                			}
+	                			
+	                			//kolmo zleva
+	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F), 1F) && 
+	                					treeLocations[wantBuild].dy < 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
+	                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx, 0F));
+	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx, 0F)) < 0.005) {
+	                					rc.plantTree(Direction.SOUTH);
+	                					builtTrees[wantBuild] = true;
+	                				}
+	                			}
+	                			
+	                			//kolmo shora
+	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(0.01F, treeLocations[wantBuild].dy), 1F) && 
+	                					treeLocations[wantBuild].dx > 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
+	                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
+	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
+	                					rc.plantTree(Direction.EAST);
+	                					builtTrees[wantBuild] = true;
+	                				}
+	                			}
+	                			//kolmo zdola
+	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy), 1F) && 
+	                					treeLocations[wantBuild].dx < 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
+	                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
+	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
+	                					rc.plantTree(Direction.WEST);
+	                					builtTrees[wantBuild] = true;
+	                				}
+	                			}
                 			}
-                			
-                			//kolmo zleva
-                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F), 1F) && 
-                					treeLocations[wantBuild].dy < 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
-                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx, 0F));
-                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx, 0F)) < 0.005) {
-                					rc.plantTree(Direction.SOUTH);
-                					builtTrees[wantBuild] = true;
-                				}
-                			}
-                			
-                			//kolmo shora
-                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(0.01F, treeLocations[wantBuild].dy), 1F) && 
-                					treeLocations[wantBuild].dx > 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
-                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
-                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
-                					rc.plantTree(Direction.EAST);
-                					builtTrees[wantBuild] = true;
-                				}
-                			}
-                			//kolmo zdola
-                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy), 1F) && 
-                					treeLocations[wantBuild].dx < 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
-                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
-                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
-                					rc.plantTree(Direction.WEST);
-                					builtTrees[wantBuild] = true;
-                				}
-                			}
-                			
                 			//jinak se vrat na start
                 			else if (rc.canMove(finalLocation)) {
                 				rc.move(finalLocation);
                 			}
                 		}
-	                    else if (rc.getTeamBullets() > 400 && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
-	                    	if (rc.canBuildRobot(RobotType.SOLDIER, unitHole.dir))
+	                    else if ((rc.getTeamBullets() > 400 || (myHealth > rc.getHealth() && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
+	                    	if ((unitsMade % 6) != 5 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.dir)) {
 	                    		rc.buildRobot(RobotType.SOLDIER, unitHole.dir);
+	                    		unitsMade++;
+	                    	}
+	                    	else if (rc.canBuildRobot(RobotType.SCOUT, unitHole.dir)) {
+	                    		rc.buildRobot(RobotType.SCOUT, unitHole.dir);
+	                    		unitsMade++;
+	                    	}
 	                    }
+	                    else if (rc.canMove(finalLocation)) {
+            				rc.move(finalLocation);
+            			}
             		}
             	}
                 
-                
+                myHealth = rc.getHealth();
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
@@ -344,6 +369,7 @@ public strictfp class GardenerPlayer {
 	}
 	
 	/* Builder execution code */
+	/*
 	static void executeBuilder() {
 		boolean spaceProblemSolved = false;
 		float baseFloat = dir.radians;
@@ -413,7 +439,7 @@ public strictfp class GardenerPlayer {
             }
         }
 	}
-	
+	*/
 	static MapLocation tryFindHole() throws GameActionException {
 		float range = 3.05F;
 		for (int i = 0; i < 50; i++) {
