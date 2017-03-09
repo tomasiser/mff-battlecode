@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import KSTTForTheWin.Broadcasting.Broadcaster;
+import KSTTForTheWin.Broadcasting.GardenerPlacementInfo;
 
 enum MY_TYPE {
 	GARDENER,
@@ -193,6 +194,7 @@ public strictfp class GardenerPlayer {
 	static void executeGardener() {		
 		boolean foundPlace = false;
 		boolean onPlace = false;
+		boolean targetAcquired = false;
 		boolean lumberjackBuilt = false;
 		MapLocation finalLocation = null;
 		float myHealth = rc.getHealth();
@@ -205,6 +207,7 @@ public strictfp class GardenerPlayer {
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {         	
             	broadcaster.refresh();
+				broadcaster.gardenerInfo.refresh();
             	myLife++;
                 // Listen for home archon's location - unused
                 //int xPos = rc.readBroadcast(0);
@@ -230,10 +233,10 @@ public strictfp class GardenerPlayer {
             		//EXPERIMENTAL:
             		finalLocation = archonDist.add(parentLoc);
             		foundPlace = true;
-            		
             	}
             	else {
             		if (!onPlace) {
+						if (!targetAcquired) finalLocation = broadcaster.gardenerInfo.currentTarget;
             			if (myLife > 100 && lumberjackBuilt == false && rc.getTeamBullets() > 100) {
             				Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
             				if (freeDir != null && rc.canBuildRobot(RobotType.LUMBERJACK, freeDir)) {
@@ -242,21 +245,38 @@ public strictfp class GardenerPlayer {
             				}
             			}
             			if (rc.canSenseLocation(finalLocation)) {
+							if (!rc.onTheMap(finalLocation) ||
+								(rc.canSenseAllOfCircle(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP) && !rc.onTheMap(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP))) {
+								broadcaster.gardenerInfo.targetNotFound();
+								Clock.yield();
+								return;
+							}
             				RobotInfo info = rc.senseRobotAtLocation(finalLocation);
-            				if (info != null && info.ID != rc.getID() && info.team == rc.getTeam() && info.type == RobotType.GARDENER)         					
-            					finalLocation = gardenerDist.add(finalLocation);
+            				/*if (info != null && info.ID != rc.getID() && info.team == rc.getTeam() && info.type == RobotType.GARDENER)         					
+            					finalLocation = gardenerDist.add(finalLocation);*/
             			}
                 		if (rc.getLocation().distanceTo(finalLocation) >= RobotType.GARDENER.strideRadius) {
+							if (!targetAcquired && rc.getLocation().distanceTo(finalLocation) < GardenerPlacementInfo.ACQUIRE_DISTANCE) {
+								broadcaster.gardenerInfo.targetAcquired();
+								targetAcquired = true;
+							}
                 			SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation), 10, 12);
                 		}
-                		else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
-                			if (rc.canMove(finalLocation)) {
-                				rc.move(finalLocation);
-                				onPlace = true;
+                		else {
+							if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
+								if (rc.canMove(finalLocation)) {
+									rc.move(finalLocation);
+									onPlace = true;
+									if (!targetAcquired) {
+										broadcaster.gardenerInfo.targetAcquired();
+										targetAcquired = true;
+									}
+								}
+								else {
+									SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
+								}
                 			}
-                			else 
-                				SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
-                		}
+						}
             		}
             		else {
                 		//check whether I have built all trees
