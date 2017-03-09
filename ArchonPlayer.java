@@ -47,8 +47,6 @@ public strictfp class ArchonPlayer {
                     broadcaster.gardenerInfo.refresh();
                     broadcaster.showDebugCircles();
                     broadcaster.gardenerInfo.showDebugCircles();
-                    if (roundNum % 75 == 0) broadcaster.gardenerInfo.targetNotFound();
-                    else if (roundNum % 25 == 0) broadcaster.gardenerInfo.targetAcquired();
                 }
 
                 if (mainArchon && roundNum % 50 == 0) {
