@@ -14,10 +14,10 @@ public strictfp class GardenerPlacementInfo {
     public int lineNumber = 1;
     public MapLocation currentTarget;
 
-    public static final float ACQUIRE_DISTANCE = 1.5f; // jak daleko od cile zahradnik ohlasi, ze to misto je jeho
-    public static final float LINE_DISTANCE = 11.0f; // jak daleko jsou od sebe linie, idealne minimum 6.03f + aby prosel robot
-    public static final float NEIGHBOUR_DISTANCE = 10.08f; // jak daleko jsou od sebe body v ramci jedne linie, minimum 6.03f, jinak 7.08f i diagonalne + aby prosel robot? (viz geometrie kruhu a ctverce)
-    public static final float RADIUS_ON_MAP = 3.6f; // jaky polomer kruhu musi byt na mape v okoli bodu, idealne minimum 7.08f/2f
+    public static final float ACQUIRE_DISTANCE = 1f; // jak daleko od cile zahradnik ohlasi, ze to misto je jeho
+    public static final float LINE_DISTANCE = 10.05f; // jak daleko jsou od sebe linie, idealne minimum 6.03f + aby prosel robot
+    public static final float NEIGHBOUR_DISTANCE = 8.04f; // jak daleko jsou od sebe body v ramci jedne linie, minimum 6.03f, jinak 7.08f i diagonalne + aby prosel robot? (viz geometrie kruhu a ctverce)
+    public static final float RADIUS_ON_MAP = 3.8f; // jaky polomer kruhu musi byt na mape v okoli bodu, idealne minimum 7.08f/2f
     // POZNAMKA!! Hodnotu RADIUS_ON_MAP je mozne snizovat, ale pak je potreba NEIGHBOUR_DISTANCE zvysovat,
     //            aby bylo mozne kolem stromku prochazet s jinymi jednotkami!
     //            Funguje i naopak - RADIUS_ON_MAP muzeme zvysit a NEIGHBOUR_DISTANCE snizit.

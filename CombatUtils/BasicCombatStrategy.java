@@ -30,13 +30,14 @@ public strictfp abstract class BasicCombatStrategy {
     private int roundsOnTheSameSpot;
     protected int remainingRandomRounds;
     protected Random rnd;
-
+    private int[] startSquare;
+    private boolean wantGuide;
     // pseudo constant
     private float VERY_CLOSE_SQ = 20f;
 
     // communication with the team
     Broadcaster broadcaster;
-
+    float walked;
     /**
      * Every combat unit should use this utils for their common behavior.
      * @param rc The controller of the robot.
@@ -49,6 +50,20 @@ public strictfp abstract class BasicCombatStrategy {
         this.enemy = enemy;
         roundsOnTheSameSpot = 0;
         remainingRandomRounds = 0;
+        walked = 0;
+        try {
+        	this.broadcaster.gardenerInfo.refresh();
+        	startSquare = SharedUtils.getMySquare(me, broadcaster);
+        	if (rc.getType() == RobotType.LUMBERJACK) {
+        		wantGuide = false;
+        	}
+        	else {
+        		wantGuide = true;
+        	}
+        }
+        catch (Exception e) {
+        	System.out.println("OUCH! broadcaster cannot refresh");
+        }
         rnd = new Random();
     }
 
@@ -56,7 +71,23 @@ public strictfp abstract class BasicCombatStrategy {
      * Make one tick/step of the unit's life.
      */
     public void update() {
+    	//try to get some free improvement
+    	SharedUtils.tryShake(rc);
+        SharedUtils.tryToWin(rc);
+        
         // prepare for the new turn
+	    try {
+	    	if (wantGuide && walked < 100) {	    		
+        		walked = SharedUtils.getOut(rc, walked, broadcaster, startSquare[1]);
+        		System.out.println(walked);
+        	}
+	    }
+	    catch (Exception e){
+	     	 System.out.println("KSTT Soldier Init Exception");
+	         e.printStackTrace();
+	    }
+	    
+	    
         if (rc.getLocation().equals(me)) {
             roundsOnTheSameSpot++;
         } else {
@@ -120,21 +151,18 @@ public strictfp abstract class BasicCombatStrategy {
             remainingRandomRounds += 10; // wander around for a while to get from the dead end
         }
 
-        // try to shake the trees lookAround
-        try {
-            SharedUtils.tryShake(rc);
-        } catch (GameActionException e) {}
-
-        // check if there is a risk of being hit by a bullet
-        BulletInfo dangerousBullet = getMostDangerousBullet();
-        if (dangerousBullet != null) {
-            dodgeBullet(dangerousBullet);
-        } else if (remainingRandomRounds > 0) {
-            moveRandomly();
-            remainingRandomRounds--;
-        } else if (currentGoal != null) {
-            // move in the direction of the goal of this round
-            moveTowardsAGoal(currentGoal);
+        if (!wantGuide || walked >=100) {
+	        // check if there is a risk of being hit by a bullet
+	        BulletInfo dangerousBullet = getMostDangerousBullet();
+	        if (dangerousBullet != null) {
+	            dodgeBullet(dangerousBullet);
+	        } else if (remainingRandomRounds > 0) {
+	            moveRandomly();
+	            remainingRandomRounds--;
+	        } else if (currentGoal != null) {
+	            // move in the direction of the goal of this round
+	            moveTowardsAGoal(currentGoal);
+	        }
         }
     }
 

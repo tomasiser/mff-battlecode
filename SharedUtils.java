@@ -1,4 +1,6 @@
 package KSTTForTheWin;
+import KSTTForTheWin.Broadcasting.Broadcaster;
+import KSTTForTheWin.Broadcasting.GardenerPlacementInfo;
 import battlecode.common.*;
 
 public strictfp class SharedUtils {
@@ -231,16 +233,106 @@ public strictfp class SharedUtils {
 	 * @param rc controller
 	 * @return true, if some tree was shaken
 	 * */
-	public static boolean tryShake(RobotController rc) throws GameActionException {
+	public static boolean tryShake(RobotController rc) {
 		TreeInfo[] availbleTrees = rc.senseNearbyTrees(rc.getType().bodyRadius + 1f, Team.NEUTRAL);
 		for (TreeInfo tree : availbleTrees) {
 			if (tree.containedBullets > 0) {
 				if (rc.canShake(tree.ID)) {
-					rc.shake(tree.ID);
+					try {
+						rc.shake(tree.ID);
+					}
+					catch (Exception e) {}
 					return true;
 				}
 			}
 		}
 		return false;
+	}
+	
+	public static void tryToWin(RobotController rc) {
+		try {
+		 if ((rc.getTeamVictoryPoints() + rc.getTeamBullets() / rc.getVictoryPointCost()) >= 1000)
+         	rc.donate(rc.getTeamBullets());
+		}
+		catch (Exception e) {}
+	}
+	public static int[] getMySquare(MapLocation myLoc, Broadcaster br) throws GameActionException {
+		
+		//br.gardenerInfo.refresh();
+		MapLocation baseLoc = br.gardenerInfo.originPoint;
+		Direction baseDir = br.gardenerInfo.originDirection;
+		
+		float length = baseLoc.distanceTo(myLoc);
+		Direction myDir = baseLoc.directionTo(myLoc);
+		float deltaLines = (float)Math.cos((double)baseDir.radiansBetween(myDir))*length;
+		float deltaSide = (float)Math.sin((double)baseDir.radiansBetween(myDir))*length;
+		
+		int[] answer = new int[2];
+		answer[0] = Math.round(deltaLines/GardenerPlacementInfo.LINE_DISTANCE) + br.gardenerInfo.lineNumber;
+		answer[1] = Math.round(deltaSide/GardenerPlacementInfo.NEIGHBOUR_DISTANCE);	
+		return answer;
+		
+	}
+	public static float getOut(RobotController rc, float walked, Broadcaster br, int baseX) throws GameActionException {
+		Direction startDir = br.gardenerInfo.originDirection;
+		//going out of the hole
+		if (walked < 2.005F) {
+			float wantDist = 2.01F - walked;
+			if (wantDist > rc.getType().strideRadius)
+				wantDist = rc.getType().strideRadius;
+			if (rc.canMove(startDir.opposite(), wantDist)) {
+				rc.move(startDir.opposite(), wantDist);
+				return walked + wantDist;
+			}
+			else {
+				return walked;
+			}
+		}
+		//turn left/right
+		else if (walked < 6.025F) {
+			float wantDist = 6.03F - walked;
+			if (wantDist > rc.getType().strideRadius)
+				wantDist = rc.getType().strideRadius;
+			if (baseX >= 0) {
+				if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
+					rc.move(startDir.rotateRightDegrees(90), wantDist);
+					return walked + wantDist;
+				}
+				wantDist *= Math.random();
+				if (walked - wantDist < 2.01F)
+					wantDist = walked - 2.01F;
+				if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
+					rc.move(startDir.rotateLeftDegrees(90), wantDist);
+					return walked - wantDist;
+				}
+				else {
+					return walked;
+				}
+			}
+			else {
+				if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
+					rc.move(startDir.rotateLeftDegrees(90), wantDist);
+					return walked + wantDist;
+				}
+				wantDist *= Math.random();
+				if (walked - wantDist < 2.01F)
+					wantDist = walked - 2.01F;
+				if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
+					rc.move(startDir.rotateRightDegrees(90), wantDist);
+					return walked - wantDist;
+				}
+				else {
+					return walked;
+				}
+			}			
+		}
+		else {
+			if (rc.canMove(startDir))
+				rc.move(startDir);
+			if (getMySquare(rc.getLocation(), br)[0] > br.gardenerInfo.lineNumber)
+				return 1111; //TODO vracet neco rozumneho?
+			else
+				return walked;
+		}
 	}
 }

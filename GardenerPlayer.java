@@ -67,7 +67,7 @@ public strictfp class GardenerPlayer {
 
     static private Broadcaster broadcaster;
     static private MY_TYPE myType = MY_TYPE.UNKNOWN;
-    static private MapLocation parentLoc;
+    //static private MapLocation parentLoc;
     static int myLife = 0;	
     static Direction dir = SharedUtils.randomDirection();
     static RobotController rc;
@@ -84,19 +84,18 @@ public strictfp class GardenerPlayer {
 		};
     */
     static diff[] treeLocations = new diff[]{
-        	new diff(-2.01F,2.01F),
-        	new diff(-2.01F,-2.01F),
-          	new diff(-2.01F,0F), 
+        	new diff(2.01F,-2.01F),
         	new diff(2.01F,2.01F),
-        	new diff(2.01F,-2.01F),     	
-        	new diff(0F,2.01F),
-        	new diff(0F,-2.01F)
-      	
+          	new diff(2.01F,0F), 
+        	new diff(-2.01F,-2.01F),
+        	new diff(-2.01F,2.01F),     	
+        	new diff(0F,-2.01F),
+        	new diff(0F,2.01F)
     	};
     
-    static diff unitHole = new diff(2.01F,0F);
-    static diff archonDist = new diff(10F, 0F);
-    static diff gardenerDist = new diff(0F, -6.03F);
+    static diff unitHole = new diff(-2.01F,0F);
+    //static diff archonDist = new diff(8F, 0F);
+    //static diff gardenerDist = new diff(0F, -6.03F);
     static float rotation = 0; //TODO
     static int unitsMade = 0;
 	static void runGardener(RobotController controller) throws GameActionException {
@@ -117,8 +116,12 @@ public strictfp class GardenerPlayer {
 			//initialization of the gardener			
 	        System.out.println("I'm a KSTT gardener!");
 	        rc = controller;
-	        broadcaster = new Broadcaster(rc);	        
+	        broadcaster = new Broadcaster(rc);	
+	        broadcaster.gardenerInfo.refresh();
+	        dir = broadcaster.gardenerInfo.originDirection;
+	        rotation = dir.radians;
 	        //EXPERIMENTAL:
+	        /*
 			if (rc.onTheMap(rc.getLocation().translate(-RobotType.GARDENER.sensorRadius + 0.01F, 0F))) {
 				unitHole.invert();
 				gardenerDist.invert();
@@ -126,17 +129,23 @@ public strictfp class GardenerPlayer {
 				for (diff loc: treeLocations) {
 					loc.invert();
 				}
+			}*/
+	        unitHole.rotate(rotation);
+	        //gardenerDist.rotate(rotation);
+			//archonDist.rotate(rotation);
+			for (diff loc: treeLocations) {
+				loc.rotate(rotation);
 			}
 			
-	        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(3F);
+	        //RobotInfo[] nearbyRobots = rc.senseNearbyRobots(3F);
 	        //System.out.println("Location:" + rc.getLocation().toString());
-	        for(RobotInfo robot : nearbyRobots) {
+	        //for(RobotInfo robot : nearbyRobots) {
 	        	//System.out.println("robot_dist: " + rc.getLocation().distanceTo(robot.getLocation()) + "Type:" + robot.type.toString());
 	        	
-	        	if (robot.type == RobotType.ARCHON && robot.team == rc.getTeam()) {
-	        		parentLoc = robot.getLocation();
+	        	//if (robot.type == RobotType.ARCHON && robot.team == rc.getTeam()) {
+	        		//parentLoc = robot.getLocation();
 	        		//go away from Archon
-	        		dir = new Direction(robot.getLocation(), rc.getLocation());
+	        		//dir = new Direction(robot.getLocation(), rc.getLocation());
 	        		//take role
 	        		/*
 	        		if (robot.getLocation().x < rc.getLocation().x) {
@@ -151,8 +160,8 @@ public strictfp class GardenerPlayer {
 	        			break;
 	        		}
 	        		*/
-	        	}
-	        }
+	        	//}
+	        //}
 	        /*
 	        //if made from tree
 	        if (myType == MY_TYPE.UNKNOWN) {
@@ -197,6 +206,7 @@ public strictfp class GardenerPlayer {
 		boolean targetAcquired = false;
 		boolean lumberjackBuilt = false;
 		MapLocation finalLocation = null;
+		int myTrees = 0;
 		float myHealth = rc.getHealth();
 		float baseFloat = (float)Math.random() * 2F * (float)Math.PI;
 		//nema smysl si pamatovat TreeInfo, protoze se jen okopiruje
@@ -214,6 +224,7 @@ public strictfp class GardenerPlayer {
                 //int yPos = rc.readBroadcast(1);
                 //MapLocation archonLoc = new MapLocation(xPos,yPos);
             	SharedUtils.tryShake(rc);
+                SharedUtils.tryToWin(rc);
             	
             	if (!foundPlace) {
             		/*
@@ -231,7 +242,7 @@ public strictfp class GardenerPlayer {
         			SharedUtils.tryMove(rc, SharedUtils.randomDirection());
         			*/
             		//EXPERIMENTAL:
-            		finalLocation = archonDist.add(parentLoc);
+            		//finalLocation = archonDist.add(parentLoc);
             		foundPlace = true;
             	}
             	else {
@@ -245,8 +256,8 @@ public strictfp class GardenerPlayer {
             				}
             			}
             			if (rc.canSenseLocation(finalLocation)) {
-							if (!rc.onTheMap(finalLocation) ||
-								(rc.canSenseAllOfCircle(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP) && !rc.onTheMap(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP))) {
+							if (!rc.onTheMap(finalLocation) || 
+									(rc.canSenseAllOfCircle(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP)	&& !rc.onTheMap(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP))) {
 								broadcaster.gardenerInfo.targetNotFound();
 								Clock.yield();
 								return;
@@ -266,7 +277,6 @@ public strictfp class GardenerPlayer {
 							if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
 								if (rc.canMove(finalLocation)) {
 									rc.move(finalLocation);
-									onPlace = true;
 									if (!targetAcquired) {
 										broadcaster.gardenerInfo.targetAcquired();
 										targetAcquired = true;
@@ -276,6 +286,9 @@ public strictfp class GardenerPlayer {
 									SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
 								}
                 			}
+							if (rc.getLocation().distanceTo(finalLocation) < 1F) {
+								onPlace = true;
+							}
 						}
             		}
             		else {
@@ -289,6 +302,7 @@ public strictfp class GardenerPlayer {
 	                			if (myTree == null) {
 	                				//System.out.println("Tree disapeared!");
 	                				builtTrees[id] = false;
+	                				myTrees--;
 	                			}
 	                			else {
 	                				if (rc.canWater() && myTree.maxHealth - myTree.health > 4.9F) {
@@ -298,8 +312,8 @@ public strictfp class GardenerPlayer {
 	                				}
 	                			}
                 			}
-                			//tree not yet built
-                			else if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST) {
+                			//tree not yet built - increases the value to let other gardeners plant too
+                			else if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST + 3*myTrees) {
                 				if (wantBuild < 0 && !rc.isCircleOccupiedExceptByThisRobot(treeLocations[id].add(finalLocation), 1F)) {
                 					wantBuild = id;
                 				}
@@ -313,6 +327,7 @@ public strictfp class GardenerPlayer {
                 				if (rc.getLocation().distanceTo(treeLocations[wantBuild].addChanged(finalLocation, 2.01F)) < 0.005) {
                 					rc.plantTree(treeLocations[wantBuild].dir);
                 					builtTrees[wantBuild] = true;
+                					myTrees++;
                 				}
                 			}
                 			//TODO doresit pro nekolme uhly
@@ -324,6 +339,7 @@ public strictfp class GardenerPlayer {
 	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx,  0F)) < 0.005) {
 	                					rc.plantTree(Direction.NORTH);
 	                					builtTrees[wantBuild] = true;
+	                					myTrees++;
 	                				}
 	                			}
 	                			
@@ -334,6 +350,7 @@ public strictfp class GardenerPlayer {
 	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx, 0F)) < 0.005) {
 	                					rc.plantTree(Direction.SOUTH);
 	                					builtTrees[wantBuild] = true;
+	                					myTrees++;
 	                				}
 	                			}
 	                			
@@ -344,6 +361,7 @@ public strictfp class GardenerPlayer {
 	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
 	                					rc.plantTree(Direction.EAST);
 	                					builtTrees[wantBuild] = true;
+	                					myTrees++;
 	                				}
 	                			}
 	                			//kolmo zdola
@@ -353,6 +371,7 @@ public strictfp class GardenerPlayer {
 	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
 	                					rc.plantTree(Direction.WEST);
 	                					builtTrees[wantBuild] = true;
+	                					myTrees++;
 	                				}
 	                			}
                 			}
@@ -361,7 +380,7 @@ public strictfp class GardenerPlayer {
                 				rc.move(finalLocation);
                 			}
                 		}
-	                    else if ((rc.getTeamBullets() > 400 || (myHealth > rc.getHealth() && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
+	                    if ((rc.getTeamBullets() > 400 || (myHealth > rc.getHealth() && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
 	                    	if ((unitsMade % 6) != 5 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.dir)) {
 	                    		rc.buildRobot(RobotType.SOLDIER, unitHole.dir);
 	                    		unitsMade++;
@@ -371,7 +390,7 @@ public strictfp class GardenerPlayer {
 	                    		unitsMade++;
 	                    	}
 	                    }
-	                    else if (rc.canMove(finalLocation)) {
+	                    else if (!rc.hasMoved() && rc.canMove(finalLocation)) {
             				rc.move(finalLocation);
             			}
             		}
