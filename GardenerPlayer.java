@@ -13,53 +13,7 @@ enum MY_TYPE {
 	BUILDER,
 	UNKNOWN;
 }
-/* Class for holding relative position of some object */
-strictfp class diff {	
-	float dx;
-	float dy;
-	Direction dir;
-	float length;
-	diff(float dx, float dy){
-		this.dx = dx; 
-		this.dy = dy;
-		dir = new Direction(dx, dy);
-		length = (float)Math.sqrt((double)(dx*dx + dy*dy));
-	}
-	
-	/**
-	 * Gets coordinates difference end - start.
-	 * */
-	diff(MapLocation start, MapLocation end) {
-		dx = end.x - start.x;
-		dy = end.y - start.y;
-	}
-	
-	/**
-	 * will add relative position to center
-	 * @param center Point to which diff is added
-	 * @return transformed position 
-	 * */
-	MapLocation add(MapLocation center) {
-		return center.translate(dx, dy);
-	}
-	MapLocation addChanged(MapLocation center, float reduction) {
-		return center.translate(dir.getDeltaX(length - reduction), dir.getDeltaY(length - reduction));
-	}
-	
-	void invert() {
-		dx = -dx;
-		dy = -dy;
-		dir = dir.rotateLeftDegrees(180);
-	}
-	//TODO rychlejsi alg.
-	void rotate(float angle) {
-		MapLocation m = new MapLocation(0,0);
-		m = m.add(dir.radians + angle, length);
-		dx = m.x;
-		dy = m.y;
-		dir = dir.rotateLeftRads(angle);
-	}
-}
+
 
 public strictfp class GardenerPlayer {
 
@@ -83,17 +37,28 @@ public strictfp class GardenerPlayer {
 		    new diff(1.005F,-1.7407F)
 		};
     */
-    static diff[] treeLocations = new diff[]{
-        	new diff(2.01F,-2.01F),
-        	new diff(2.01F,2.01F),
-          	new diff(2.01F,0F), 
-        	new diff(-2.01F,-2.01F),
-        	new diff(-2.01F,2.01F),     	
-        	new diff(0F,-2.01F),
-        	new diff(0F,2.01F)
+    static Diff[] treeLocations = new Diff[]{       	
+    		new Diff(2.01F, 0F),
+        	new Diff(2.01F, -2.01F),
+        	new Diff(2.01F, 2.01F),          	 
+        	new Diff(-2.01F, -2.01F),
+        	new Diff(-2.01F, 2.01F),     	
+        	new Diff(0F, -2.01F),
+        	new Diff(0F, 2.01F)
     	};
     
-    static diff unitHole = new diff(-2.01F,0F);
+    //zaloha pro hledani i pod nenulovym uhlem
+    static Diff[] origtreeLocations = new Diff[]{        	
+    		new Diff(2.01F, 0F),
+        	new Diff(2.01F, -2.01F),
+        	new Diff(2.01F, 2.01F),          	 
+        	new Diff(-2.01F, -2.01F),
+        	new Diff(-2.01F, 2.01F),     	
+        	new Diff(0F, -2.01F),
+        	new Diff(0F, 2.01F)
+    	};
+    
+    static Diff unitHole = new Diff(-2.01F,0F);
     //static diff archonDist = new diff(8F, 0F);
     //static diff gardenerDist = new diff(0F, -6.03F);
     static float rotation = 0; //TODO
@@ -121,56 +86,16 @@ public strictfp class GardenerPlayer {
 	        dir = broadcaster.gardenerInfo.originDirection;
 	        rotation = dir.radians;
 	        //EXPERIMENTAL:
-	        /*
-			if (rc.onTheMap(rc.getLocation().translate(-RobotType.GARDENER.sensorRadius + 0.01F, 0F))) {
-				unitHole.invert();
-				gardenerDist.invert();
-				archonDist.invert();
-				for (diff loc: treeLocations) {
-					loc.invert();
-				}
-			}*/
+	        
 	        unitHole.rotate(rotation);
 	        //gardenerDist.rotate(rotation);
 			//archonDist.rotate(rotation);
-			for (diff loc: treeLocations) {
+			for (Diff loc: treeLocations) {
 				loc.rotate(rotation);
 			}
 			
-	        //RobotInfo[] nearbyRobots = rc.senseNearbyRobots(3F);
-	        //System.out.println("Location:" + rc.getLocation().toString());
-	        //for(RobotInfo robot : nearbyRobots) {
-	        	//System.out.println("robot_dist: " + rc.getLocation().distanceTo(robot.getLocation()) + "Type:" + robot.type.toString());
-	        	
-	        	//if (robot.type == RobotType.ARCHON && robot.team == rc.getTeam()) {
-	        		//parentLoc = robot.getLocation();
-	        		//go away from Archon
-	        		//dir = new Direction(robot.getLocation(), rc.getLocation());
-	        		//take role
-	        		/*
-	        		if (robot.getLocation().x < rc.getLocation().x) {
-	        			myType = MY_TYPE.BUILDER;
-	        			System.out.println("Type = BUILDER");
-	        			
-	        			break;
-	        		}
-	        		else {
-	        			myType = MY_TYPE.GARDENER;
-	        			System.out.println("Type = GARDENER");
-	        			break;
-	        		}
-	        		*/
-	        	//}
-	        //}
-	        /*
-	        //if made from tree
-	        if (myType == MY_TYPE.UNKNOWN) {
-	        	//System.out.println("type = UNKNOWN");
-	        	myType = MY_TYPE.GARDENER;
-	        }*/
-			
 			if (rc.getRoundNum() < 10 && RobotType.SCOUT.bulletCost <= rc.getTeamBullets()) {
-				Direction freeDir = SharedUtils.tryFindPlace(rc, 0);
+				Direction freeDir = SharedUtils.tryFindPlace(rc, dir.opposite().radians);
 				if (freeDir != null && rc.canBuildRobot(RobotType.SCOUT, freeDir)) {
 					rc.buildRobot(RobotType.SCOUT, freeDir);
 				}
@@ -209,192 +134,234 @@ public strictfp class GardenerPlayer {
 		int myTrees = 0;
 		float myHealth = rc.getHealth();
 		float baseFloat = (float)Math.random() * 2F * (float)Math.PI;
+		int faults = 0;
 		//nema smysl si pamatovat TreeInfo, protoze se jen okopiruje
 		//List<MapLocation> myTrees = new ArrayList<>();
 		boolean[] builtTrees = new boolean[treeLocations.length];
-		
+		boolean hasPath = false;
+		Pathfinding myPath;
+		myPath = new Pathfinding(rc, broadcaster);
         while (true) {    	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {         	
             	broadcaster.refresh();
-				broadcaster.gardenerInfo.refresh();
+				broadcaster.gardenerInfo.refresh();			
             	myLife++;
-                // Listen for home archon's location - unused
-                //int xPos = rc.readBroadcast(0);
-                //int yPos = rc.readBroadcast(1);
-                //MapLocation archonLoc = new MapLocation(xPos,yPos);
             	SharedUtils.tryShake(rc);
                 SharedUtils.tryToWin(rc);
-            	
-            	if (!foundPlace) {
-            		/*
-            		finalLocation = tryFindHole();
-            		if (finalLocation != null) {
-            			foundPlace = true;
-            		}
-            		else if (!lumberjackBuilt && myLife > 10 &&  rc.getTeamBullets() >= RobotType.LUMBERJACK.bulletCost) {
-            			Direction lumberLoc = SharedUtils.tryFindPlace(rc, baseFloat);
-        				if (lumberLoc != null && rc.canBuildRobot(RobotType.LUMBERJACK, lumberLoc)) {
-        					rc.buildRobot(RobotType.LUMBERJACK, lumberLoc);
-        					lumberjackBuilt = true;
-        				}
-            		}
-        			SharedUtils.tryMove(rc, SharedUtils.randomDirection());
-        			*/
-            		//EXPERIMENTAL:
-            		//finalLocation = archonDist.add(parentLoc);
-            		foundPlace = true;
-            	}
-            	else {
-            		if (!onPlace) {
-						if (!targetAcquired) finalLocation = broadcaster.gardenerInfo.currentTarget;
-            			if (myLife > 100 && lumberjackBuilt == false && rc.getTeamBullets() > 100) {
-            				Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
-            				if (freeDir != null && rc.canBuildRobot(RobotType.LUMBERJACK, freeDir)) {
-            					rc.buildRobot(RobotType.LUMBERJACK, freeDir);
-            					lumberjackBuilt = true;
-            				}
-            			}
-            			if (rc.canSenseLocation(finalLocation)) {
-							if (!rc.onTheMap(finalLocation) || 
-									(rc.canSenseAllOfCircle(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP)	&& !rc.onTheMap(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP))) {
-								broadcaster.gardenerInfo.targetNotFound();
-								Clock.yield();
-								return;
-							}
-            				RobotInfo info = rc.senseRobotAtLocation(finalLocation);
-            				/*if (info != null && info.ID != rc.getID() && info.team == rc.getTeam() && info.type == RobotType.GARDENER)         					
-            					finalLocation = gardenerDist.add(finalLocation);*/
-            			}
-                		if (rc.getLocation().distanceTo(finalLocation) >= RobotType.GARDENER.strideRadius) {
-							if (!targetAcquired && rc.getLocation().distanceTo(finalLocation) < GardenerPlacementInfo.ACQUIRE_DISTANCE) {
-								broadcaster.gardenerInfo.targetAcquired();
-								targetAcquired = true;
-							}
-                			SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation), 10, 12);
-                		}
-                		else {
-							if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
-								if (rc.canMove(finalLocation)) {
-									rc.move(finalLocation);
-									if (!targetAcquired) {
-										broadcaster.gardenerInfo.targetAcquired();
-										targetAcquired = true;
-									}
-								}
-								else {
-									SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
-								}
-                			}
-							if (rc.getLocation().distanceTo(finalLocation) < 1F) {
-								onPlace = true;
-							}
+                
+                if (!rc.onTheMap(rc.getLocation(), RobotType.GARDENER.sensorRadius - 0.01F)) { //TODO zrychlit
+                	broadcaster.reportWall(0);
+                	broadcaster.reportWall(1);
+                	broadcaster.reportWall(2);
+                	broadcaster.reportWall(3);
+                }
+                
+        		if (!onPlace) {
+					if (!targetAcquired)  {
+						MapLocation newfinalLocation = broadcaster.gardenerInfo.currentTarget;
+						if (finalLocation == null || finalLocation.distanceTo(newfinalLocation) > 0.05F) {
+							finalLocation = newfinalLocation;
+							hasPath = myPath.FindPath(rc.getLocation(), finalLocation, true);							
 						}
+						if (faults > 20) {
+			        		faults++;
+			        		SharedUtils.tryMove(rc, SharedUtils.randomDirection());
+						}
+			        	if (faults > 40)
+			        		faults = 0;
+				        if(faults <= 20 && !hasPath) { 
+				        	hasPath = myPath.FindPath(rc.getLocation(), finalLocation, true);
+				        	if (!hasPath) {
+								SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation), 10, 10);
+							}
+				        }
+				        if (hasPath) {
+				        	int status = myPath.nextPoint(rc);
+				        	if (status == 2) {
+				        		hasPath = false;
+				        	}
+				        	else if (status == 1) {
+				        		faults++;
+				        		if (faults > 20) {
+				        			faults = 0;
+				        			hasPath = false;
+				        		}
+				        	}
+				        }
+							
+					}
+									
+        			if (myLife > 30 && lumberjackBuilt == false && rc.getTeamBullets() > 100) {
+        				if (rc.senseNearbyTrees(3F, Team.NEUTRAL).length > 0) {
+	        				Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
+	        				if (freeDir != null && rc.canBuildRobot(RobotType.LUMBERJACK, freeDir)) {
+	        					rc.buildRobot(RobotType.LUMBERJACK, freeDir);
+	        					lumberjackBuilt = true;
+	        				}
+        				}
+        			}
+        			/*
+        			if (rc.canSenseLocation(finalLocation)) {
+						if (!rc.onTheMap(finalLocation) || 
+								(rc.canSenseAllOfCircle(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP)	&& !rc.onTheMap(finalLocation, GardenerPlacementInfo.RADIUS_ON_MAP))) {*/
+        			if (targetAcquired && !broadcaster.gardenerInfo.checkWall(finalLocation)) {
+							//TODO
+							broadcaster.reportWall(0);
+							broadcaster.reportWall(1);
+							broadcaster.reportWall(2);
+							broadcaster.reportWall(3);
+							
+							//broadcaster.gardenerInfo.targetNotFound();
+							System.out.println("Target failed");
+							targetAcquired = false;
+							broadcaster.gardenerInfo.removeTarget(finalLocation);
+							Clock.yield();
+							return;
+						}
+        				//RobotInfo info = rc.senseRobotAtLocation(finalLocation);
+        			//}
+            		if (rc.getLocation().distanceTo(finalLocation) >= RobotType.GARDENER.strideRadius) {
+						if (!targetAcquired && (rc.getLocation().distanceTo(finalLocation) < GardenerPlacementInfo.ACQUIRE_DISTANCE)) {
+							broadcaster.gardenerInfo.targetAcquired();
+							targetAcquired = true;
+						}
+						if (targetAcquired)
+							SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
             		}
             		else {
-                		//check whether I have built all trees
-                		//List<Integer> toRemove = new ArrayList<>();
-                		int wantBuild = -1;
-                		for (int id = 0; id < builtTrees.length; id++) {
-                			//if the tree is already built
-                			if (builtTrees[id] == true) {
-	                			TreeInfo myTree = rc.senseTreeAtLocation(treeLocations[id].add(finalLocation));
-	                			if (myTree == null) {
-	                				//System.out.println("Tree disapeared!");
-	                				builtTrees[id] = false;
-	                				myTrees--;
-	                			}
-	                			else {
-	                				if (rc.canWater() && myTree.maxHealth - myTree.health > 4.9F) {
-	                					//System.out.println("Want water:" + myTree.getLocation().toString() + ",dist = " + rc.getLocation().distanceTo(myTree.getLocation()));
-	                					if (rc.canWater(myTree.ID))
-	                						rc.water(myTree.ID);
-	                				}
-	                			}
+						if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation, 1F)) {
+							if (rc.canMove(finalLocation)) {
+								rc.move(finalLocation);
+								if (!targetAcquired) {
+									broadcaster.gardenerInfo.targetAcquired();
+									targetAcquired = true;
+								}
+							}
+							else {
+								if (targetAcquired)
+									SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
+							}
+            			}
+						if (rc.getLocation().distanceTo(finalLocation) < 0.3F) {
+							onPlace = true;
+						}
+					}
+        		}
+        		else {
+            		//check whether I have built all trees
+            		//List<Integer> toRemove = new ArrayList<>();
+            		int wantBuild = -1;
+            		for (int id = 0; id < builtTrees.length; id++) {
+            			//if the tree is already built
+            			if (builtTrees[id] == true) {
+                			TreeInfo myTree = rc.senseTreeAtLocation(treeLocations[id].add(finalLocation));
+                			if (myTree == null) {
+                				//System.out.println("Tree disapeared!");
+                				builtTrees[id] = false;
+                				myTrees--;
                 			}
-                			//tree not yet built - increases the value to let other gardeners plant too
-                			else if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST + 3*myTrees) {
-                				if (wantBuild < 0 && !rc.isCircleOccupiedExceptByThisRobot(treeLocations[id].add(finalLocation), 1F)) {
-                					wantBuild = id;
+                			else {
+                				if (rc.canWater() && myTree.maxHealth - myTree.health > 4.4F) {
+                					//System.out.println("Want water:" + myTree.getLocation().toString() + ",dist = " + rc.getLocation().distanceTo(myTree.getLocation()));
+                					if (rc.canWater(myTree.ID))
+                						rc.water(myTree.ID);
                 				}
                 			}
-                		}
-                		if (wantBuild >= 0) {
-                			//primy posun
-                			if (!rc.isCircleOccupiedExceptByThisRobot(treeLocations[wantBuild].addChanged(finalLocation, 2.01F), 1F) &&
-                					rc.canMove(treeLocations[wantBuild].addChanged(finalLocation, 2.01F))) {
-                				rc.move(treeLocations[wantBuild].addChanged(finalLocation, 2.01F));
-                				if (rc.getLocation().distanceTo(treeLocations[wantBuild].addChanged(finalLocation, 2.01F)) < 0.005) {
-                					rc.plantTree(treeLocations[wantBuild].dir);
-                					builtTrees[wantBuild] = true;
-                					myTrees++;
+            			}
+            			//tree not yet built - increases the value to let other gardeners plant too
+            			else if (rc.isBuildReady() && rc.getTeamBullets() >= GameConstants.BULLET_TREE_COST + 3*myTrees) {
+            				if (wantBuild < 0 && !rc.isCircleOccupiedExceptByThisRobot(treeLocations[id].add(finalLocation), 1F)) {
+            					wantBuild = id;
+            				}
+            			}
+            		}
+            		if (wantBuild >= 0) {
+            			//primy posun
+            			if (!rc.isCircleOccupiedExceptByThisRobot(treeLocations[wantBuild].addChanged(finalLocation, 2.01F), 1F) &&
+            					rc.canMove(treeLocations[wantBuild].addChanged(finalLocation, 2.01F))) {
+            				rc.move(treeLocations[wantBuild].addChanged(finalLocation, 2.01F));
+            				if (rc.getLocation().distanceTo(treeLocations[wantBuild].addChanged(finalLocation, 2.01F)) < 0.005) {
+            					if (rc.canPlantTree(treeLocations[wantBuild].getDirection())) {
+            						rc.plantTree(treeLocations[wantBuild].getDirection());
+            						builtTrees[wantBuild] = true;
+            						myTrees++;
+            					}
+            				}
+            			}
+            			else {
+                			//kolmo zprava
+                			if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.add(rotation, origtreeLocations[wantBuild].dx), 1.005F) && 
+                					origtreeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.add(rotation, origtreeLocations[wantBuild].dx))) {
+                				rc.move(finalLocation.add(rotation, origtreeLocations[wantBuild].dx));
+                				if (rc.getLocation().distanceTo(finalLocation.add(rotation, origtreeLocations[wantBuild].dx)) < 0.005) {
+                					if (rc.canPlantTree(Direction.NORTH.rotateLeftRads(rotation))) {
+	                					rc.plantTree(Direction.NORTH.rotateLeftRads(rotation));
+	                					builtTrees[wantBuild] = true;
+	                					myTrees++;
+                					}
                 				}
                 			}
-                			//TODO doresit pro nekolme uhly
-                			else if (rotation == 0) {
-	                			//kolmo zprava
-	                			if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, 0.01F), 1F) && 
-	                					treeLocations[wantBuild].dy > 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
-	                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx,  0F));
-	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx,  0F)) < 0.005) {
-	                					rc.plantTree(Direction.NORTH);
-	                					builtTrees[wantBuild] = true;
-	                					myTrees++;
-	                				}
-	                			}
-	                			
-	                			//kolmo zleva
-	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(treeLocations[wantBuild].dx, -0.01F), 1F) && 
-	                					treeLocations[wantBuild].dy < 0 && rc.canMove(finalLocation.translate(treeLocations[wantBuild].dx, 0F))) {
-	                				rc.move(finalLocation.translate(treeLocations[wantBuild].dx, 0F));
-	                				if (rc.getLocation().distanceTo(finalLocation.translate(treeLocations[wantBuild].dx, 0F)) < 0.005) {
-	                					rc.plantTree(Direction.SOUTH);
-	                					builtTrees[wantBuild] = true;
-	                					myTrees++;
-	                				}
-	                			}
-	                			
-	                			//kolmo shora
-	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(0.01F, treeLocations[wantBuild].dy), 1F) && 
-	                					treeLocations[wantBuild].dx > 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
-	                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
-	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
-	                					rc.plantTree(Direction.EAST);
-	                					builtTrees[wantBuild] = true;
-	                					myTrees++;
-	                				}
-	                			}
-	                			//kolmo zdola
-	                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.translate(-0.01F, treeLocations[wantBuild].dy), 1F) && 
-	                					treeLocations[wantBuild].dx < 0 && rc.canMove(finalLocation.translate(0F, treeLocations[wantBuild].dy))) {
-	                				rc.move(finalLocation.translate(0F, treeLocations[wantBuild].dy));
-	                				if (rc.getLocation().distanceTo(finalLocation.translate(0F, treeLocations[wantBuild].dy)) < 0.005) {
-	                					rc.plantTree(Direction.WEST);
-	                					builtTrees[wantBuild] = true;
-	                					myTrees++;
-	                				}
-	                			}
+                			
+                			//kolmo zleva
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.add(rotation, origtreeLocations[wantBuild].dx), 1.005F) && 
+                					origtreeLocations[wantBuild].dy < 0 && rc.canMove(finalLocation.add(rotation, origtreeLocations[wantBuild].dx))) {
+                				rc.move(finalLocation.add(rotation, origtreeLocations[wantBuild].dx));
+                				if (rc.getLocation().distanceTo(finalLocation.add(rotation, origtreeLocations[wantBuild].dx)) < 0.005) {
+                					if (rc.canPlantTree(Direction.SOUTH.rotateLeftRads(rotation))) {
+                						rc.plantTree(Direction.SOUTH.rotateLeftRads(rotation));
+                						builtTrees[wantBuild] = true;
+                						myTrees++;
+                					}
+                				}
                 			}
+                			
+                			//kolmo shora
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy), 1.005F) && 
+                					origtreeLocations[wantBuild].dx > 0 && rc.canMove(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy))) {
+                				rc.move(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy));
+                				if (rc.getLocation().distanceTo(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy)) < 0.005) {
+                					if (rc.canPlantTree(Direction.EAST.rotateLeftRads(rotation))) {
+                						rc.plantTree(Direction.EAST.rotateLeftRads(rotation));
+                						builtTrees[wantBuild] = true;
+                						myTrees++;
+                					}
+                				}
+                			}
+                			//kolmo zdola
+                			else if (!rc.isCircleOccupiedExceptByThisRobot(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy), 1.005F) && 
+                					origtreeLocations[wantBuild].dx < 0 && rc.canMove(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy))) {
+                				rc.move(finalLocation.add(rotation  + (float)Math.PI/2, origtreeLocations[wantBuild].dy));
+                				if (rc.getLocation().distanceTo(finalLocation.add(rotation + (float)Math.PI/2, origtreeLocations[wantBuild].dy)) < 0.005) {
+                					if (rc.canPlantTree(Direction.WEST.rotateLeftRads(rotation))) {
+                						rc.plantTree(Direction.WEST.rotateLeftRads(rotation));
+                						builtTrees[wantBuild] = true;
+                						myTrees++;
+                					}
+                				}
+                			}
+                			
                 			//jinak se vrat na start
                 			else if (rc.canMove(finalLocation)) {
                 				rc.move(finalLocation);
                 			}
-                		}
-	                    if ((rc.getTeamBullets() > 400 || (myHealth > rc.getHealth() && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
-	                    	if ((unitsMade % 6) != 5 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.dir)) {
-	                    		rc.buildRobot(RobotType.SOLDIER, unitHole.dir);
-	                    		unitsMade++;
-	                    	}
-	                    	else if (rc.canBuildRobot(RobotType.SCOUT, unitHole.dir)) {
-	                    		rc.buildRobot(RobotType.SCOUT, unitHole.dir);
-	                    		unitsMade++;
-	                    	}
-	                    }
-	                    else if (!rc.hasMoved() && rc.canMove(finalLocation)) {
-            				rc.move(finalLocation);
             			}
             		}
-            	}
+        			
+                    if ((rc.getTeamBullets() > 400 || (myHealth > rc.getHealth() && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
+                    	if ((unitsMade % 5) != 3 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.getDirection())) {
+                    		rc.buildRobot(RobotType.SOLDIER, unitHole.getDirection());
+                    		unitsMade++;
+                    	}
+                    	else if (rc.canBuildRobot(RobotType.SCOUT, unitHole.getDirection())) {
+                    		rc.buildRobot(RobotType.SCOUT, unitHole.getDirection());
+                    		unitsMade++;
+                    	}
+                    }
+                    else if (!rc.hasMoved() && rc.canMove(finalLocation)) {
+        				rc.move(finalLocation);
+        			}
+        		}
                 
                 myHealth = rc.getHealth();
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again

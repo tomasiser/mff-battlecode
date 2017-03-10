@@ -21,6 +21,7 @@ public class AttackerCombatStrategy extends BasicCombatStrategy {
     public AttackerCombatStrategy(RobotController rc, Team enemy) {
         super(rc, enemy);
         prevGoal = null;
+        goal = broadcaster.findNearestArchon();
     }
 
     /**

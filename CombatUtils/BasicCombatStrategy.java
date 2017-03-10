@@ -6,6 +6,8 @@ import KSTTForTheWin.Broadcasting.Broadcaster;
 import java.util.*;
 
 import KSTTForTheWin.SharedUtils;
+import KSTTForTheWin.Diff;
+import KSTTForTheWin.Pathfinding;
 import battlecode.common.*;
 
 /**
@@ -30,10 +32,13 @@ public strictfp abstract class BasicCombatStrategy {
     private int roundsOnTheSameSpot;
     protected int remainingRandomRounds;
     protected Random rnd;
-    private int[] startSquare;
+    private Diff startSquare;
     private boolean wantGuide;
+    private boolean hasPath;
+    private Pathfinding myPath;
+    private int faults = 0;
     // pseudo constant
-    private float VERY_CLOSE_SQ = 20f;
+    protected float VERY_CLOSE_SQ = 20f;
 
     // communication with the team
     Broadcaster broadcaster;
@@ -52,8 +57,12 @@ public strictfp abstract class BasicCombatStrategy {
         remainingRandomRounds = 0;
         walked = 0;
         try {
-        	this.broadcaster.gardenerInfo.refresh();
-        	startSquare = SharedUtils.getMySquare(me, broadcaster);
+        	startSquare = this.broadcaster.gardenerInfo.getSquareLocation(me);
+        	myPath = new Pathfinding(this.rc, this.broadcaster);
+        	//wantGuide = myPath.FindPath(rc.getLocation(), broadcaster.findNearestAction());
+        	hasPath = false;
+        	System.out.println(startSquare.dx + " " + startSquare.dy);
+        	
         	if (rc.getType() == RobotType.LUMBERJACK) {
         		wantGuide = false;
         	}
@@ -76,9 +85,10 @@ public strictfp abstract class BasicCombatStrategy {
         SharedUtils.tryToWin(rc);
         
         // prepare for the new turn
+        /*
 	    try {
 	    	if (wantGuide && walked < 100) {	    		
-        		walked = SharedUtils.getOut(rc, walked, broadcaster, startSquare[1]);
+        		walked = SharedUtils.getOut(rc, walked, broadcaster,1); //startSquare[1]);
         		System.out.println(walked);
         	}
 	    }
@@ -87,7 +97,31 @@ public strictfp abstract class BasicCombatStrategy {
 	         e.printStackTrace();
 	    }
 	    
-	    
+	    */
+        if (wantGuide && (goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
+        	if (faults > 20)
+        		faults++;
+        	if (faults > 40)
+        		faults = 0;
+	        if(faults <= 20 && !hasPath) { 
+	        	hasPath = myPath.FindPath(rc.getLocation(), goal);
+	        }
+	        if (hasPath) {
+	        	int status = myPath.nextPoint(rc);
+	        	if (status == 2) {
+	        		hasPath = false;
+	        	}
+	        	else if (status == 1) {
+	        		faults++;
+	        		if (faults > 20) {
+	        			hasPath = false;
+	        		}
+	        	}
+	        }
+        }
+        else {
+        	hasPath = false;
+        }
         if (rc.getLocation().equals(me)) {
             roundsOnTheSameSpot++;
         } else {
@@ -151,7 +185,7 @@ public strictfp abstract class BasicCombatStrategy {
             remainingRandomRounds += 10; // wander around for a while to get from the dead end
         }
 
-        if (!wantGuide || walked >=100) {
+        if (!hasPath) {
 	        // check if there is a risk of being hit by a bullet
 	        BulletInfo dangerousBullet = getMostDangerousBullet();
 	        if (dangerousBullet != null) {

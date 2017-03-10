@@ -11,7 +11,7 @@ public strictfp class ArchonPlayer {
     static RobotController rc;
     static int built = 0;
     static boolean mainArchon = true;
-    static boolean builtTreeGardener = false;
+    //static boolean builtTreeGardener = false;
     //static boolean builtBuilderGardener = false;
 
     static void runArchon(RobotController rcon) throws GameActionException {
@@ -55,10 +55,14 @@ public strictfp class ArchonPlayer {
                 if (mainArchon && roundNum % 50 == 0) {
                     buyVictoryPointsIfNeeded();
                 }
+                if (roundNum == 2998) {
+                    rc.donate(rc.getTeamBullets());
+                }
 
                 // Generate a random direction
                 
                 Direction dir;
+                broadcaster.gardenerInfo.refresh();
                 dir = SharedUtils.tryFindPlace(rc, broadcaster.gardenerInfo.originDirection.radians);
                 /*
                 if (builtTreeGardener && builtBuilderGardener) dir = SharedUtils.randomDirection();
@@ -67,11 +71,11 @@ public strictfp class ArchonPlayer {
 */
 
                 // Randomly attempt to build a gardener in this direction
-                if (dir!= null && rc.canHireGardener(dir) && (!builtTreeGardener || Math.random() < .05)) {
-                	//TEST:
+                if (dir!= null && rc.canHireGardener(dir) && rc.getTeamBullets() > 125 &&
+                		(rc.getInitialArchonLocations(rc.getTeam()).length*(built - (broadcaster.gardenerInfo.targets - broadcaster.gardenerInfo.removes)) < (1 + rc.getRoundNum()/300))) {
             		built++;
                 	rc.hireGardener(dir);
-                    if (!builtTreeGardener) builtTreeGardener = true;
+                    //if (!builtTreeGardener) builtTreeGardener = true;
                     //else if (!builtBuilderGardener) builtBuilderGardener = true;
                 }
 
@@ -92,20 +96,16 @@ public strictfp class ArchonPlayer {
     static void buyVictoryPointsIfNeeded() throws GameActionException {
         float bulletsToDonate = 0;
 
-        if (rc.getRoundNum() == 2950) {
-            bulletsToDonate = rc.getTeamBullets();
-        } else {
-            int myVP = rc.getTeamVictoryPoints();
-            int enemyVP = rc.getOpponentVictoryPoints();
-            float bullets = rc.getTeamBullets();
-            float victoryPointCost = rc.getVictoryPointCost();
+        int myVP = rc.getTeamVictoryPoints();
+        int enemyVP = rc.getOpponentVictoryPoints();
+        float bullets = rc.getTeamBullets();
+        float victoryPointCost = rc.getVictoryPointCost();
 
-            if (!shouldBuyVictoryPoints(myVP, enemyVP, bullets)) return;
+        if (!shouldBuyVictoryPoints(myVP, enemyVP, bullets)) return;
 
-            bulletsToDonate = bullets * 0.3f;
-            bulletsToDonate = (float)Math.ceil(bulletsToDonate / victoryPointCost) * victoryPointCost;
-        }
-
+        bulletsToDonate = bullets * 0.3f;
+        bulletsToDonate = (float)Math.ceil(bulletsToDonate / victoryPointCost) * victoryPointCost;
+        
         rc.donate(bulletsToDonate);
     }
 

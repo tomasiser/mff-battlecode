@@ -1,6 +1,6 @@
 package KSTTForTheWin;
 import KSTTForTheWin.Broadcasting.Broadcaster;
-import KSTTForTheWin.Broadcasting.GardenerPlacementInfo;
+//import KSTTForTheWin.Broadcasting.GardenerPlacementInfo;
 import battlecode.common.*;
 
 public strictfp class SharedUtils {
@@ -31,7 +31,7 @@ public strictfp class SharedUtils {
      * @throws GameActionException
      */
     public static boolean tryMove(RobotController rc, Direction dir) throws GameActionException {
-        return tryMove(rc, dir, 20, 3);
+        return tryMove(rc, dir, 15, 5);
     }
 
     static boolean trySimpleMove(RobotController rc, Direction dir) throws GameActionException {
@@ -60,7 +60,9 @@ public strictfp class SharedUtils {
      * @throws GameActionException
      */
     public static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
-
+    	if (rc.hasMoved()) {
+    		return false;
+    	}
         // First, try intended direction
         if (rc.canMove(dir)) {
             rc.move(dir);
@@ -256,24 +258,9 @@ public strictfp class SharedUtils {
 		}
 		catch (Exception e) {}
 	}
-	public static int[] getMySquare(MapLocation myLoc, Broadcaster br) throws GameActionException {
-		
-		//br.gardenerInfo.refresh();
-		MapLocation baseLoc = br.gardenerInfo.originPoint;
-		Direction baseDir = br.gardenerInfo.originDirection;
-		
-		float length = baseLoc.distanceTo(myLoc);
-		Direction myDir = baseLoc.directionTo(myLoc);
-		float deltaLines = (float)Math.cos((double)baseDir.radiansBetween(myDir))*length;
-		float deltaSide = (float)Math.sin((double)baseDir.radiansBetween(myDir))*length;
-		
-		int[] answer = new int[2];
-		answer[0] = Math.round(deltaLines/GardenerPlacementInfo.LINE_DISTANCE) + br.gardenerInfo.lineNumber;
-		answer[1] = Math.round(deltaSide/GardenerPlacementInfo.NEIGHBOUR_DISTANCE);	
-		return answer;
-		
-	}
+	
 	public static float getOut(RobotController rc, float walked, Broadcaster br, int baseX) throws GameActionException {
+		/*//TODO
 		Direction startDir = br.gardenerInfo.originDirection;
 		//going out of the hole
 		if (walked < 2.005F) {
@@ -334,5 +321,7 @@ public strictfp class SharedUtils {
 			else
 				return walked;
 		}
+		*/
+		return 0;
 	}
 }

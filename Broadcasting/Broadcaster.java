@@ -44,13 +44,23 @@ public strictfp class Broadcaster {
     static final int GARDENER_CURRENT_TARGET = 53; // 2
     static final int GARDENER_BUILD_DIRECTION = 55;
     static final int GARDENER_LINE_NUMBER = 56;
+    static final int GARDENER_POSITION_NUMBER = 57;
 
+    static final int LOCATION_COUNT = 1490;
+    static final int GARDENER_LOCATIONS = 1500; //
+    static final int REMOVES_COUNT = 1990;
+    static final int GARDENER_REMOVES = 2000; //
+    
+    static final int TOTAL_WALLS = 4;
+    static final int WALL_BASE = 8000; //up->right->down->left
     RobotController rc;
 
     int enemyArchonCount = 0;
 
     ArchonLocation[] archonLocations = new ArchonLocation[MAX_ARCHONS];
     HelpNeededLocation[] helpNeededLocations = new HelpNeededLocation[MAX_HELP_NEEDED];
+    
+    
     public GardenerPlacementInfo gardenerInfo;
 
     public Broadcaster(RobotController rc) {
@@ -82,7 +92,50 @@ public strictfp class Broadcaster {
             );
         }
     }
-
+    
+    
+    public void reportWall(int dir) throws GameActionException {
+    	//uz byla reportovana
+    	if (gardenerInfo.walls[dir] != 0)
+    		return;
+    	float dx = 0;
+    	float dy = 0;
+    	switch(dir) {
+    		case 0:
+    			dy = 1;
+    			break;
+    		case 1:
+    			dx = 1;
+    			break;
+    		case 2:
+    			dy = -1;
+    			break;
+    		case 3:
+    			dx = -1;
+    			break;
+    	}
+    	float dist = rc.getType().sensorRadius - 0.1F;
+    	//pokud konec nevidim, nic nebudu delat
+    	if (rc.onTheMap(rc.getLocation().translate(dx*dist, dy*dist)))
+    		return;
+    	
+    	//hledam kraj
+    	while (!rc.onTheMap(rc.getLocation().translate(dx*dist, dy*dist))) {
+    		dx *= 0.9F;
+    		dy *= 0.9F;
+    	}
+    	while (rc.onTheMap(rc.getLocation().translate(dx*dist, dy*dist))) {
+    		dx *= 1.005F;
+    		dy *= 1.005F;
+    	}
+    	//broadcast result
+    	if (dir == 0 || dir == 2)
+    		rc.broadcastFloat(WALL_BASE + dir, rc.getLocation().y + dy*dist);
+    	else
+    		rc.broadcastFloat(WALL_BASE + dir, rc.getLocation().x + dx*dist);
+    	
+    	return;
+    }
     public void reportEnemyArchonCount(int howManyArchons) throws GameActionException {
         rc.broadcastInt(ARCHON_COUNT_CHANNEL, howManyArchons);
         this.enemyArchonCount = howManyArchons;
@@ -177,7 +230,7 @@ public strictfp class Broadcaster {
         MapLocation nearestArchon = findNearestArchon();
 
         if (nearestArchon == null && nearestHelp == null) {
-            return origin; // when no target is known, stay where you are
+            return rc.getInitialArchonLocations(rc.getTeam().opponent())[0]; // when no target is known, go to enemy archon initial position
         } else if (nearestArchon == null) { // when some of the targets is not present, just return the other one
             return nearestHelp; // is not null
         } else if (nearestHelp == null) {

@@ -8,8 +8,10 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
 
     public LumberjackStrategy(RobotController rc, Team enemy) {
         super(rc, enemy);
+        VERY_CLOSE_SQ = 5F;
     }
-
+    
+    static int noTree = 0;
     /**
      * Avoid randomness.
      */
@@ -24,7 +26,23 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
         }
 
         if (trees.length > 0) {
+        	noTree = 0;
             setGoal(trees[0].getLocation());
+        }
+        else {
+        	try {     
+        		if (noTree > 20) { //TODO
+        			setGoal(broadcaster.findNearestArchon());
+        		}
+        		else {
+        			broadcaster.gardenerInfo.refresh();
+        			setGoal(broadcaster.gardenerInfo.currentTarget);
+        		}
+        		noTree++;
+        	}
+        	catch (Exception e) {
+        		System.out.println("Lumberjack error");
+        	}
         }
 
         super.update();
