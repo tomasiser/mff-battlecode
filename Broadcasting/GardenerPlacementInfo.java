@@ -122,7 +122,7 @@ public strictfp class GardenerPlacementInfo {
             buildDirection = BuildDirection.RIGHT;
             lineNumber++;
             positionNumber = 0;
-            //originPoint = originPoint.add(originDirection, LINE_DISTANCE); origin nechci mìnit
+            //originPoint = originPoint.add(originDirection, LINE_DISTANCE); origin nechci mnit
             currentTarget = originPoint.add(originDirection.rotateRightDegrees(90f), NEIGHBOUR_DISTANCE*0.5F).add(originDirection, LINE_DISTANCE*(lineNumber + 0.5F));
             //rc.broadcastFloat(Broadcaster.GARDENER_ORIGIN_POINT, originPoint.x);
             //rc.broadcastFloat(Broadcaster.GARDENER_ORIGIN_POINT + 1, originPoint.y);
