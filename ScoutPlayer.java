@@ -6,6 +6,7 @@ import java.awt.*;
 
 import static KSTTForTheWin.ScoutPlayer.states.EXPLORE_DIR;
 import static KSTTForTheWin.ScoutPlayer.states.EXPLORE_LOC;
+import static KSTTForTheWin.ScoutPlayer.states.KILL;
 import static KSTTForTheWin.SharedUtils.*;
 
 /**
@@ -14,10 +15,12 @@ import static KSTTForTheWin.SharedUtils.*;
 
 public strictfp class ScoutPlayer {
     enum states {
-        EXPLORE_DIR, EXPLORE_LOC, TRACK
+        EXPLORE_DIR, EXPLORE_LOC, TRACK, KILL
     }
 
     final static double safeRadius = 10.0;
+    final static int patience = 100;
+    final static boolean allowTether = false;
 
     @SuppressWarnings("unused")
     static Direction dir = randomDirection();
@@ -27,6 +30,9 @@ public strictfp class ScoutPlayer {
     static int dodgeDir = 0;
     static boolean wantShot = false;
     static MapLocation target;
+    static int bloodlust = 0;
+    static int targetId = 0;
+    static float lastTargetHP = 0.0f;
     //// See if there are any nearby enemy robots
     //RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
     //MapLocation myLocation = rc.getLocation();
@@ -51,6 +57,7 @@ public strictfp class ScoutPlayer {
             
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+                observe(rc);
                 switch(state)
                 {
                     case EXPLORE_LOC:
@@ -61,6 +68,9 @@ public strictfp class ScoutPlayer {
                         break;
                     case TRACK:
                         track(rc);
+                        break;
+                    case KILL:
+                        kill(rc);
                         break;
                 }
                 
@@ -141,6 +151,10 @@ public strictfp class ScoutPlayer {
 
     static void observe(RobotController rc) throws GameActionException
     {
+        int own = 0;
+        RobotInfo gardener = null;
+        MapLocation myLocation = rc.getLocation();
+        double minDist = 1000;
         for(RobotInfo robot : robots)
         {
             if(robot.getTeam() != rc.getTeam()) {
@@ -158,9 +172,24 @@ public strictfp class ScoutPlayer {
                 		wantShot = true;
                 		target = robot.location;
                 	}
+                	if(myLocation.distanceTo(robot.getLocation()) < minDist)
+                    {
+                       gardener = robot;
+                       minDist = myLocation.distanceTo(robot.getLocation());
+                    }
                 }
             }
+            else
+                own++;
         }
+
+        if(gardener != null && bloodlust > patience && state != KILL) {
+            targetId = gardener.getID();
+            state = KILL;
+        }
+
+        if(own > 10)
+            wantShot = false;
     }
 
     static void pickMove(RobotController rc) throws GameActionException {
@@ -181,7 +210,6 @@ public strictfp class ScoutPlayer {
 
     // The code you want your robot to perform every round should be in this loop
     static void explore(RobotController rc) throws GameActionException {
-        observe(rc);
 
         if (Math.random() < .03) {
             pickMove(rc);
@@ -201,6 +229,34 @@ public strictfp class ScoutPlayer {
             pickMove(rc);
             tryMove(rc, dir);
         }
+
+        bloodlust++;
+    }
+
+    static void kill(RobotController rc) throws GameActionException {
+        if(!rc.canSenseRobot(targetId))
+        {
+            bloodlust = 0;
+            pickMove(rc);
+            explore(rc);
+        }
+
+        RobotInfo robot = rc.senseRobot(targetId);
+        boolean sameHP = robot.getHealth() == lastTargetHP;
+        lastTargetHP = robot.getHealth();
+        if( rc.canMove(rc.getLocation().directionTo(robot.getLocation())) ) {
+            rc.move(rc.getLocation().directionTo(robot.getLocation()));
+        }
+        else if (allowTether || sameHP){
+            Direction newDir = getDodgeDirection(rc, robot, dodgeDir);
+            if(rc.canMove(newDir))
+                rc.move(newDir);
+            else if(rc.canMove(newDir.opposite()))
+                rc.move(newDir.opposite());
+        }
+
+        wantShot = true;
+        target = robot.getLocation();
     }
 
 
