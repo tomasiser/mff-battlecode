@@ -19,7 +19,7 @@ public strictfp class ScoutPlayer {
     }
 
     final static double safeRadius = 10.0;
-    final static int patience = 100;
+    final static int patience = 50;
     final static boolean allowTether = false;
 
     @SuppressWarnings("unused")
@@ -241,6 +241,8 @@ public strictfp class ScoutPlayer {
             explore(rc);
         }
 
+        try {
+
         RobotInfo robot = rc.senseRobot(targetId);
         boolean sameHP = robot.getHealth() == lastTargetHP;
         lastTargetHP = robot.getHealth();
@@ -257,6 +259,9 @@ public strictfp class ScoutPlayer {
 
         wantShot = true;
         target = robot.getLocation();
+        } catch (Exception e) {
+
+        }
     }
 
 
