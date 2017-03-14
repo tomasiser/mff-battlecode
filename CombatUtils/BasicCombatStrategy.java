@@ -37,6 +37,8 @@ public strictfp abstract class BasicCombatStrategy {
     private boolean wantGuide;
     private boolean hasPath;
     private Pathfinding myPath;
+    protected boolean goalChanged;
+    protected int lastGoalChange;
     private int faults = 0;
     // pseudo constant
     protected float VERY_CLOSE_SQ = 20f;
@@ -122,6 +124,7 @@ public strictfp abstract class BasicCombatStrategy {
         if (shouldChooseNewGoal()) {
             setGoal(null); // forget the previous goal
             chooseGoal();
+            goalChanged = true;
         }
 
         // DEBUG: place a debug flag on the goal (if any)
@@ -175,29 +178,36 @@ public strictfp abstract class BasicCombatStrategy {
 
         if (!hasDodged && !hasShotAtTarget) {
             // I am not in a fight, I can move as I wish
-            if (wantGuide && (goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
-                if (faults > 20)
-                    faults++;
-                if (faults > 40)
-                    faults = 0;
-                if(faults <= 20 && !hasPath) { 
-                    hasPath = myPath.FindPath(rc.getLocation(), goal);
-                }
-                if (hasPath) {
-                    int status = myPath.nextPoint(rc);
-                    if (status == 2) {
-                        hasPath = false;
-                    }
-                    else if (status == 1) {
-                        faults++;
-                        if (faults > 20) {
-                            hasPath = false;
-                        }
-                    }
-                }
+        	if ((goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
+            	if (goalChanged && rc.getRoundNum() - lastGoalChange > 10) {
+            		goalChanged = false;
+            		lastGoalChange = rc.getRoundNum();
+            		faults = 0;
+            		hasPath = false;
+            	}
+            	
+    	        if(!hasPath) { 
+    	        	if (goal != null) //kontola, ze je goal nastaven
+    	        		hasPath = myPath.FindPath(rc.getLocation(), goal, wantGuide);
+    	        	else
+    	        		hasPath = myPath.FindPath(rc.getLocation(), rc.getInitialArchonLocations(rc.getTeam().opponent())[0], wantGuide);
+    	        }
+    	        if (hasPath) {
+    	        	int status = myPath.nextPoint(rc);
+    	        	if (status == 2) {
+    	        		hasPath = false;
+    	        	}
+    	        	else if (status == 1) {
+    	        		faults++;
+    	        		if (faults > 20) {
+    	        			faults = 0;
+    	        			hasPath = false;
+    	        		}
+    	        	}
+    	        }
             }
             else {
-                hasPath = false;
+            	hasPath = false;
             }
             
             if (!hasPath) {
