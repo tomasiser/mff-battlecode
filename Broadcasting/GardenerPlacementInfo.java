@@ -18,7 +18,9 @@ public strictfp class GardenerPlacementInfo {
     public float[] walls = new float[Broadcaster.TOTAL_WALLS];
     public int targets = 0;
     public int removes = 0;
+    public int reaquires = 0;
     public boolean[][] usedTargets = new boolean[20][21];
+    public int gardenerCount = 0;
     //public int[] pingVals;
     public static final float ACQUIRE_DISTANCE = 5.66f; // jak daleko od cile zahradnik ohlasi, ze to misto je jeho
     public static final float LINE_DISTANCE = 8.04f; // jak daleko jsou od sebe linie, idealne minimum 6.03f + aby prosel robot
@@ -73,10 +75,20 @@ public strictfp class GardenerPlacementInfo {
         }
         removes = newRemoves;
         
+        //download reaqured positions
+    	int newReaquires = rc.readBroadcast(Broadcaster.REAQUIRE_COUNT);
+        for (int i = reaquires; i < newReaquires; i++) {
+        	int newX = rc.readBroadcast(Broadcaster.GARDENER_REAQUIRES + 2*i);
+        	int newY = rc.readBroadcast(Broadcaster.GARDENER_REAQUIRES + 2*i + 1);
+        	usedTargets[newX + 2][newY + 10] = true;
+        }
+        reaquires = newReaquires;
+        
         //update walls
     	for (int i = 0; i < Broadcaster.TOTAL_WALLS; i++) {
     		walls[i] = rc.readBroadcastFloat(Broadcaster.WALL_BASE + i);
     	}
+    	gardenerCount = rc.readBroadcastInt(Broadcaster.GARDENER_COUNT);
     }
 
     public void targetAcquired() throws GameActionException {
@@ -108,26 +120,28 @@ public strictfp class GardenerPlacementInfo {
         
         System.out.println("Target : " + currentTarget.x + " " + currentTarget.y);
     }
-
+    public int getRealGardenerCount() {
+    	int res = 0;
+    	for (int i = 0; i < 20; i++) {
+    		for (int j = 0; j < 21; j++) {
+    			if (usedTargets[i][j])
+    				res++;
+    		}
+    	}
+    	return res;
+    }
     public void targetNotFound() throws GameActionException {
         if (buildDirection == BuildDirection.RIGHT) {
             buildDirection = BuildDirection.LEFT;
             positionNumber = -1;
             currentTarget = originPoint.add(originDirection.rotateLeftDegrees(90f), NEIGHBOUR_DISTANCE*0.5F).add(originDirection, LINE_DISTANCE*(lineNumber + 0.5F));
-            //rc.broadcastFloat(Broadcaster.GARDENER_CURRENT_TARGET, currentTarget.x);
-            //rc.broadcastFloat(Broadcaster.GARDENER_CURRENT_TARGET + 1, currentTarget.y);
             rc.broadcastInt(Broadcaster.GARDENER_BUILD_DIRECTION, 1);
             rc.broadcast(Broadcaster.GARDENER_POSITION_NUMBER, positionNumber);
         } else {
             buildDirection = BuildDirection.RIGHT;
             lineNumber++;
             positionNumber = 0;
-            //originPoint = originPoint.add(originDirection, LINE_DISTANCE); origin nechci mnit
             currentTarget = originPoint.add(originDirection.rotateRightDegrees(90f), NEIGHBOUR_DISTANCE*0.5F).add(originDirection, LINE_DISTANCE*(lineNumber + 0.5F));
-            //rc.broadcastFloat(Broadcaster.GARDENER_ORIGIN_POINT, originPoint.x);
-            //rc.broadcastFloat(Broadcaster.GARDENER_ORIGIN_POINT + 1, originPoint.y);
-            //rc.broadcastFloat(Broadcaster.GARDENER_CURRENT_TARGET, currentTarget.x);
-            //rc.broadcastFloat(Broadcaster.GARDENER_CURRENT_TARGET + 1, currentTarget.y);
             rc.broadcastInt(Broadcaster.GARDENER_BUILD_DIRECTION, 0);
             rc.broadcastInt(Broadcaster.GARDENER_LINE_NUMBER, lineNumber);
             rc.broadcast(Broadcaster.GARDENER_POSITION_NUMBER, positionNumber);
@@ -143,30 +157,30 @@ public strictfp class GardenerPlacementInfo {
     	System.out.println("Removed " + square.dx + " " + square.dy);
     }
     
-    public Diff getSquareLocation(MapLocation loc) throws GameActionException {
-		
-		refresh();
-		//MapLocation baseLoc = br.gardenerInfo.originPoint;
-		//Direction baseDir = br.gardenerInfo.originDirection;
-		
+    //add previously removed target
+    public void addTarget(MapLocation loc) throws GameActionException {
+    	Diff square = getSquareLocation(loc);
+		usedTargets[(int)(square.dx + 10) - 8][(int)(square.dy + 10)] = true;
+		rc.broadcast(Broadcaster.GARDENER_REAQUIRES + 2*reaquires, (int)(square.dx + 10) - 10);
+	    rc.broadcast(Broadcaster.GARDENER_REAQUIRES + 2*reaquires + 1, (int)(square.dy + 10) - 10);
+	    rc.broadcast(Broadcaster.REAQUIRE_COUNT, ++reaquires);       
+    	System.out.println("Reaqured " + square.dx + " " + square.dy);
+    }
+    
+    public Diff getSquareLocation(MapLocation loc) throws GameActionException {		
+		refresh();		
 		Diff answer = new Diff(originPoint, loc);
 		answer.rotate(-originDirection.radians);
 		answer.multiply(1/LINE_DISTANCE, 1/NEIGHBOUR_DISTANCE);
-		//float length = originPoint.distanceTo(loc);
-		//Direction myDir = originPoint.directionTo(loc).rotateRightRads(originDirection.radians);
-		
-		//float[] answer = new float[2];
-		//answer[0] = (float)Math.cos((double)myDir.radians)*length / LINE_DISTANCE;
-		//answer[1] = (float)Math.sin((double)myDir.radians)*length / NEIGHBOUR_DISTANCE;
 		return answer;
 		
 	}
     //returns whether target is good
     public boolean checkWall(MapLocation target) {    
-    	if((walls[0] != 0 && (walls[0] - target.y < RADIUS_ON_MAP)) ||
-		(walls[1] != 0 && (walls[1] - currentTarget.x < RADIUS_ON_MAP)) ||
-		(walls[2] != 0 && (currentTarget.y - walls[2] < RADIUS_ON_MAP)) ||
-		(walls[3] != 0 && (currentTarget.x - walls[3] < RADIUS_ON_MAP))) {
+    	if((Math.abs(walls[0]) > 0.001 && (walls[0] - target.y < RADIUS_ON_MAP)) ||
+		(Math.abs(walls[1]) > 0.001 && (walls[1] - target.x < RADIUS_ON_MAP)) ||
+		(Math.abs(walls[2]) > 0.001 && (target.y - walls[2] < RADIUS_ON_MAP)) ||
+		(Math.abs(walls[3]) > 0.001 && (target.x - walls[3] < RADIUS_ON_MAP))) {
     		return false;
     	}
     	return true;

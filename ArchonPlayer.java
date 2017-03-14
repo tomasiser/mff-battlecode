@@ -70,9 +70,15 @@ public strictfp class ArchonPlayer {
                 else dir = SharedUtils.randomLeftRightDirection(true);
 */
 
-                // Randomly attempt to build a gardener in this direction
+                //every 10 rounds check the number of gardeners
+                if (rc.getRoundNum() % 10 == 1)
+                	built = rc.readBroadcastInt(Broadcaster.GARDENER_COUNT);
+                //reset it for next iteration
+                if (rc.getRoundNum() % 10 == 9)
+                	rc.broadcastInt(Broadcaster.GARDENER_COUNT, 0);
+                // attempt to build a gardener in this direction
                 if (dir!= null && rc.canHireGardener(dir) && rc.getTeamBullets() > 125 &&
-                		(rc.getInitialArchonLocations(rc.getTeam()).length*(built - (broadcaster.gardenerInfo.targets - broadcaster.gardenerInfo.removes)) < (1 + rc.getRoundNum()/300))) {
+                		(built - broadcaster.gardenerInfo.getRealGardenerCount()) < 2) { //TODO!!!
             		built++;
                 	rc.hireGardener(dir);
                     //if (!builtTreeGardener) builtTreeGardener = true;

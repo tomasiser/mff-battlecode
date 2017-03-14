@@ -3,6 +3,8 @@ import battlecode.common.*;
 
 import java.util.Random;
 
+import KSTTForTheWin.Diff;
+
 public strictfp class Broadcaster {
 
     /**
@@ -47,10 +49,16 @@ public strictfp class Broadcaster {
     static final int GARDENER_POSITION_NUMBER = 57;
 
     static final int LOCATION_COUNT = 1490;
-    static final int GARDENER_LOCATIONS = 1500; //
+    static final int GARDENER_LOCATIONS = 1500; 
     static final int REMOVES_COUNT = 1990;
-    static final int GARDENER_REMOVES = 2000; //
+    static final int GARDENER_REMOVES = 2000;   
+    static final int REAQUIRE_COUNT = 2290;
+    static final int GARDENER_REAQUIRES = 2300;
+    public static final int GARDENER_COUNT = 2500;
     
+    public static final int EMPTY_PLACE_COUNT = 2999;
+    public static final int EMPTY_PLACE_REPORTS = 3000;
+
     static final int TOTAL_WALLS = 4;
     static final int WALL_BASE = 8000; //up->right->down->left
     RobotController rc;
@@ -135,6 +143,85 @@ public strictfp class Broadcaster {
     		rc.broadcastFloat(WALL_BASE + dir, rc.getLocation().x + dx*dist);
     	
     	return;
+    }
+    
+    public void tryReportEmptyPlace() throws GameActionException {
+    	Diff myLoc = gardenerInfo.getSquareLocation(rc.getLocation());
+    	for (int id = 0; id < 4; id++) {
+	    	Diff squareLoc = myLoc;
+	    	int X = 0;
+	    	int Y = 0;
+	    	switch(id) {
+	    		case 0:
+	    			X = (int)(squareLoc.dx + 10) - 11;
+	    			Y = (int)(squareLoc.dy + 10) - 11;
+	    			break;
+	    		case 1:
+	    			X = (int)(squareLoc.dx + 10) - 10;
+	    			Y = (int)(squareLoc.dy + 10) - 11;
+	    		case 2:
+	    			X = (int)(squareLoc.dx + 10) - 11;
+	    			Y = (int)(squareLoc.dy + 10) - 10;
+	    		case 3:
+	    			X = (int)(squareLoc.dx + 10) - 10;
+	    			Y = (int)(squareLoc.dy + 10) - 10;
+	    	}
+	    	MapLocation endLocation = gardenerInfo.getMapLocation(new Diff(X + 0.5F, Y + 0.5F));
+	    	if (!gardenerInfo.usedTargets[X + 2][Y + 10]) {
+	    		continue;
+	    	}
+	    	if (rc.canSenseAllOfCircle(endLocation, 2F)) {
+	    		if (rc.getType() == RobotType.GARDENER && rc.getLocation().distanceTo(endLocation) < 2.5F) //dont skip myself
+	    			continue;
+	    		RobotInfo[] robots = rc.senseNearbyRobots(endLocation, 2F, rc.getTeam());
+	    		boolean found = false;
+	    		for (RobotInfo robot : robots) {
+	    			if (robot.type == RobotType.GARDENER) {
+	    				found = true;
+	    				break;
+	    			}
+	    		}
+	    		if (found) {
+	    			continue;
+	    		}
+	    		//gardener not found, report the place
+		    	int total = rc.readBroadcastInt(EMPTY_PLACE_COUNT);
+		    	for (int i = 0; i < total; i++) {
+		    		if (rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*i) == X && rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*i + 1) == Y) //reported already
+		    			return;
+		    	}
+		    	//not yet reported, therefore report!
+		    	rc.broadcastInt(EMPTY_PLACE_REPORTS + 2*total, X);
+		    	rc.broadcastInt(EMPTY_PLACE_REPORTS + 2*total + 1, Y);
+		    	rc.broadcastInt(EMPTY_PLACE_COUNT, total + 1);
+		    	gardenerInfo.removeTarget(endLocation);
+		    	System.out.println("Reported" + endLocation.toString() + ", " + X + " " + Y);
+	    	}
+    	}
+    }
+    public void removeEmptyPlace(MapLocation loc) throws GameActionException {
+    	Diff squareLoc = gardenerInfo.getSquareLocation(loc);
+    	int X = (int)(squareLoc.dx + 10) - 10;
+    	int Y = (int)(squareLoc.dy + 10) - 10;
+    	int total = rc.readBroadcastInt(EMPTY_PLACE_COUNT);
+    	int i = 0;
+    	while (i < total && (rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*i) != X || rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*i + 1) != Y)) {
+    		i++;
+    	}
+    	if (i == total) { //was removed already
+    		return; 
+    	}
+    	//move last report to this place
+    	if (i < total - 1) {
+    		int newX = rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*total);
+    		int newY = rc.readBroadcastInt(EMPTY_PLACE_REPORTS + 2*total + 1);
+    		rc.broadcast(EMPTY_PLACE_REPORTS + 2*i, newX);
+    		rc.broadcast(EMPTY_PLACE_REPORTS + 2*i + 1, newY);
+    	}
+    
+    	//remove
+    	rc.broadcastInt(EMPTY_PLACE_COUNT, total - 1);
+    	gardenerInfo.addTarget(loc);
     }
     public void reportEnemyArchonCount(int howManyArchons) throws GameActionException {
         rc.broadcastInt(ARCHON_COUNT_CHANNEL, howManyArchons);
@@ -302,5 +389,10 @@ public strictfp class Broadcaster {
             if (loc.isDead()) continue;
             rc.setIndicatorDot(loc.location, 255, 0, 0);
         }*/
+    }
+    
+    public void addGardener() throws GameActionException {
+    	int total = rc.readBroadcastInt(GARDENER_COUNT);
+    	rc.broadcast(GARDENER_COUNT, total + 1);
     }
 }
