@@ -60,9 +60,9 @@ public strictfp class SharedUtils {
      * @throws GameActionException
      */
     public static boolean tryMove(RobotController rc, Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
-    	if (rc.hasMoved()) {
-    		return false;
-    	}
+        if (rc.hasMoved()) {
+            return false;
+        }
         // First, try intended direction
         if (rc.canMove(dir)) {
             rc.move(dir);
@@ -176,11 +176,11 @@ public strictfp class SharedUtils {
         switch (type) {
             case ARCHON:
             case GARDENER:
-            case SCOUT:
                 return false;
             case SOLDIER:
             case TANK:
             case LUMBERJACK:
+            case SCOUT:
                 return true;
         }
         return false;
@@ -188,140 +188,148 @@ public strictfp class SharedUtils {
     
     
     /**
-	 * Finds first hole with radius 1 clockwise starting by baseAngle
-	 * @param baseAngle Angle from which hole is searched
-	 * @return found direction, or null, if not found
-	 * */
+     * Finds first hole with radius 1 clockwise starting by baseAngle
+     * @param baseAngle Angle from which hole is searched
+     * @return found direction, or null, if not found
+     * */
     public static Direction tryFindPlace(RobotController rc, float baseAngle) throws GameActionException {
-    	return tryFindPlace(rc, baseAngle, 1F);
+        return tryFindPlace(rc, baseAngle, 1F);
     }
     
     /**
-	 * Finds first hole with given radius clockwise starting by baseAngle
-	 * @param baseAngle Angle from which hole is searched
-	 * @param radius hole radius
-	 * @return found direction, or null, if not found
-	 * */
-	public static Direction tryFindPlace(RobotController rc, float baseAngle, float radius) throws GameActionException {
-		float angle = baseAngle;
-		float distance = rc.getType().bodyRadius + radius + 0.01F;
-		MapLocation myLocation = rc.getLocation();
-		
-		//look around for empty place 
-		while (angle < 2*Math.PI + baseAngle) {
-			if (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
-					rc.onTheMap(myLocation.add(angle, distance), radius)) {
-				break;
-			}
-			angle += 0.2;
-		}
-		//put it as nearby as possible
-		while (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
-				rc.onTheMap(myLocation.add(angle, distance), radius) && angle > baseAngle) {
-			angle -= 0.01;
-		}
-		angle += 0.01;
-		
-		//check it!
-		if (angle < 2*Math.PI + baseAngle) {
-			return new Direction(angle);
-		}
-		else
-			return null;
-	}
-	
-	/**
-	 * Looks around for shakeable tree (with some bullets)
-	 * @param rc controller
-	 * @return true, if some tree was shaken
-	 * */
-	public static boolean tryShake(RobotController rc) {
-		TreeInfo[] availbleTrees = rc.senseNearbyTrees(rc.getType().bodyRadius + 1f, Team.NEUTRAL);
-		for (TreeInfo tree : availbleTrees) {
-			if (tree.containedBullets > 0) {
-				if (rc.canShake(tree.ID)) {
-					try {
-						rc.shake(tree.ID);
-					}
-					catch (Exception e) {}
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	public static void tryToWin(RobotController rc) {
-		try {
-		 if ((rc.getTeamVictoryPoints() + rc.getTeamBullets() / rc.getVictoryPointCost()) >= 1000)
-         	rc.donate(rc.getTeamBullets());
-		}
-		catch (Exception e) {}
-	}
-	
-	public static float getOut(RobotController rc, float walked, Broadcaster br, int baseX) throws GameActionException {
-		/*//TODO
-		Direction startDir = br.gardenerInfo.originDirection;
-		//going out of the hole
-		if (walked < 2.005F) {
-			float wantDist = 2.01F - walked;
-			if (wantDist > rc.getType().strideRadius)
-				wantDist = rc.getType().strideRadius;
-			if (rc.canMove(startDir.opposite(), wantDist)) {
-				rc.move(startDir.opposite(), wantDist);
-				return walked + wantDist;
-			}
-			else {
-				return walked;
-			}
-		}
-		//turn left/right
-		else if (walked < 6.025F) {
-			float wantDist = 6.03F - walked;
-			if (wantDist > rc.getType().strideRadius)
-				wantDist = rc.getType().strideRadius;
-			if (baseX >= 0) {
-				if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
-					rc.move(startDir.rotateRightDegrees(90), wantDist);
-					return walked + wantDist;
-				}
-				wantDist *= Math.random();
-				if (walked - wantDist < 2.01F)
-					wantDist = walked - 2.01F;
-				if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
-					rc.move(startDir.rotateLeftDegrees(90), wantDist);
-					return walked - wantDist;
-				}
-				else {
-					return walked;
-				}
-			}
-			else {
-				if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
-					rc.move(startDir.rotateLeftDegrees(90), wantDist);
-					return walked + wantDist;
-				}
-				wantDist *= Math.random();
-				if (walked - wantDist < 2.01F)
-					wantDist = walked - 2.01F;
-				if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
-					rc.move(startDir.rotateRightDegrees(90), wantDist);
-					return walked - wantDist;
-				}
-				else {
-					return walked;
-				}
-			}			
-		}
-		else {
-			if (rc.canMove(startDir))
-				rc.move(startDir);
-			if (getMySquare(rc.getLocation(), br)[0] > br.gardenerInfo.lineNumber)
-				return 1111; //TODO vracet neco rozumneho?
-			else
-				return walked;
-		}
-		*/
-		return 0;
-	}
+     * Finds first hole with given radius clockwise starting by baseAngle
+     * @param baseAngle Angle from which hole is searched
+     * @param radius hole radius
+     * @return found direction, or null, if not found
+     * */
+    public static Direction tryFindPlace(RobotController rc, float baseAngle, float radius) throws GameActionException {
+        float angle = baseAngle;
+        float distance = rc.getType().bodyRadius + radius + 0.01F;
+        MapLocation myLocation = rc.getLocation();
+        
+        //look around for empty place 
+        while (angle < 2*Math.PI + baseAngle) {
+            if (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
+                    rc.onTheMap(myLocation.add(angle, distance), radius)) {
+                break;
+            }
+            angle += 0.2;
+        }
+        //put it as nearby as possible
+        while (!rc.isCircleOccupiedExceptByThisRobot(myLocation.add(angle, distance), radius) &&
+                rc.onTheMap(myLocation.add(angle, distance), radius) && angle > baseAngle) {
+            angle -= 0.01;
+        }
+        angle += 0.01;
+        
+        //check it!
+        if (angle < 2*Math.PI + baseAngle) {
+            return new Direction(angle);
+        }
+        else
+            return null;
+    }
+    
+    /**
+     * Looks around for shakeable tree (with some bullets)
+     * @param rc controller
+     * @return true, if some tree was shaken
+     * */
+    public static boolean tryShake(RobotController rc) {
+        TreeInfo[] availbleTrees = rc.senseNearbyTrees(rc.getType().bodyRadius + 1f, Team.NEUTRAL);
+        for (TreeInfo tree : availbleTrees) {
+            if (tree.containedBullets > 0) {
+                if (rc.canShake(tree.ID)) {
+                    try {
+                        rc.shake(tree.ID);
+                    }
+                    catch (Exception e) {}
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    public static void tryToWin(RobotController rc) {
+        try {
+         if ((rc.getTeamVictoryPoints() + rc.getTeamBullets() / rc.getVictoryPointCost()) >= 1000)
+             rc.donate(rc.getTeamBullets());
+        }
+        catch (Exception e) {}
+    }
+    
+    public static float getOut(RobotController rc, float walked, Broadcaster br, int baseX) throws GameActionException {
+        /*//TODO
+        Direction startDir = br.gardenerInfo.originDirection;
+        //going out of the hole
+        if (walked < 2.005F) {
+            float wantDist = 2.01F - walked;
+            if (wantDist > rc.getType().strideRadius)
+                wantDist = rc.getType().strideRadius;
+            if (rc.canMove(startDir.opposite(), wantDist)) {
+                rc.move(startDir.opposite(), wantDist);
+                return walked + wantDist;
+            }
+            else {
+                return walked;
+            }
+        }
+        //turn left/right
+        else if (walked < 6.025F) {
+            float wantDist = 6.03F - walked;
+            if (wantDist > rc.getType().strideRadius)
+                wantDist = rc.getType().strideRadius;
+            if (baseX >= 0) {
+                if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
+                    rc.move(startDir.rotateRightDegrees(90), wantDist);
+                    return walked + wantDist;
+                }
+                wantDist *= Math.random();
+                if (walked - wantDist < 2.01F)
+                    wantDist = walked - 2.01F;
+                if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
+                    rc.move(startDir.rotateLeftDegrees(90), wantDist);
+                    return walked - wantDist;
+                }
+                else {
+                    return walked;
+                }
+            }
+            else {
+                if (rc.canMove(startDir.rotateLeftDegrees(90), wantDist)) {
+                    rc.move(startDir.rotateLeftDegrees(90), wantDist);
+                    return walked + wantDist;
+                }
+                wantDist *= Math.random();
+                if (walked - wantDist < 2.01F)
+                    wantDist = walked - 2.01F;
+                if (rc.canMove(startDir.rotateRightDegrees(90), wantDist)) {
+                    rc.move(startDir.rotateRightDegrees(90), wantDist);
+                    return walked - wantDist;
+                }
+                else {
+                    return walked;
+                }
+            }            
+        }
+        else {
+            if (rc.canMove(startDir))
+                rc.move(startDir);
+            if (getMySquare(rc.getLocation(), br)[0] > br.gardenerInfo.lineNumber)
+                return 1111; //TODO vracet neco rozumneho?
+            else
+                return walked;
+        }
+        */
+        return 0;
+    }
+
+    public static boolean isNear(MapLocation a, MapLocation b) {
+        return isNear(a, b, 5f);
+    }
+
+    public static boolean isNear(MapLocation a, MapLocation b, float threshold) {
+        return a.distanceSquaredTo(b) < threshold*threshold;
+    }
 }

@@ -26,23 +26,23 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
         }
 
         if (trees.length > 0) {
-        	noTree = 0;
+            noTree = 0;
             setGoal(trees[0].getLocation());
         }
         else {
-        	try {     
-        		if (noTree > 20) { //TODO
-        			setGoal(broadcaster.findNearestArchon());
-        		}
-        		else {
-        			broadcaster.gardenerInfo.refresh();
-        			setGoal(broadcaster.gardenerInfo.currentTarget);
-        		}
-        		noTree++;
-        	}
-        	catch (Exception e) {
-        		System.out.println("Lumberjack error");
-        	}
+            try {     
+                if (noTree > 20) { //TODO
+                    setGoal(broadcaster.findNearestArchon());
+                }
+                else {
+                    broadcaster.gardenerInfo.refresh();
+                    setGoal(broadcaster.gardenerInfo.currentTarget);
+                }
+                noTree++;
+            }
+            catch (Exception e) {
+                System.out.println("Lumberjack error");
+            }
         }
 
         super.update();
@@ -59,6 +59,16 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
         } catch (GameActionException e) {
             return false;
         }
+    }
+
+
+    /**
+     * The lumberjack must get close to the enemy to fight with it!
+     * @return Never run away!
+     */
+    @Override
+    protected boolean shouldFlee() {
+        return false;
     }
 
     /**

@@ -1,6 +1,7 @@
 package KSTTForTheWin;
 import KSTTForTheWin.Broadcasting.Broadcaster;
 import battlecode.common.*;
+import KSTTForTheWin.CombatUtils.*;
 
 import java.awt.*;
 
@@ -41,7 +42,7 @@ public strictfp class ScoutPlayer {
     static BulletInfo[] bullets;
     static RobotInfo[] robots;
 
-	static void runScout(RobotController rc) throws GameActionException {
+    static void runScout(RobotController rc) throws GameActionException {
         // System.out.println("I'm a KSTT scout!");
         broadcaster = new Broadcaster(rc);
         state = EXPLORE_DIR;
@@ -49,9 +50,9 @@ public strictfp class ScoutPlayer {
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
-        	SharedUtils.tryShake(rc);
+            SharedUtils.tryShake(rc);
             SharedUtils.tryToWin(rc);
-        	
+            
             Integer round = rc.getRoundNum();
             refreshCache(rc, round);
             
@@ -75,13 +76,15 @@ public strictfp class ScoutPlayer {
                 }
                 
                 if (wantShot) {
-                	if (rc.canFireSingleShot()) {
-                		rc.fireSingleShot(rc.getLocation().directionTo(target));
-                	}
-                	wantShot = false;
+                    rc.setIndicatorDot(target, 255, 0, 0);
+                    rc.setIndicatorLine(rc.getLocation(), target, 200, 0, 0);
+                    Direction dir = rc.getLocation().directionTo(target);
+                    if (SharedCombatUtils.shoot(rc, dir, rc.senseNearbyRobots(-1f, rc.getTeam().opponent()), rc.senseNearbyRobots(-1f, rc.getTeam()), rc.senseNearbyTrees())) {
+                        wantShot = false;
+                    }
                 }
-                Clock.yield();
 
+                Clock.yield();
             } catch (Exception e) {
                 System.out.println("KSTT Scout Exception");
                 e.printStackTrace();
@@ -161,18 +164,20 @@ public strictfp class ScoutPlayer {
                 if (robot.getType() == RobotType.ARCHON) {
                     broadcaster.reportEnemyArchon(robot.ID, robot.getLocation());
                     if (!wantShot) {
-                    	wantShot = true;
-                    	target = robot.location;
+                        wantShot = true;
+                        target = robot.location;
                     }
                 } else if (robotIsDangerous(robot)) {
                     broadcaster.reportHelpNeeded();
+                    wantShot = true;
+                    target = robot.location;
                 }
                 else if (robot.getType() == RobotType.GARDENER) {
-                	if (!wantShot) {
-                		wantShot = true;
-                		target = robot.location;
-                	}
-                	if(myLocation.distanceTo(robot.getLocation()) < minDist)
+                    if (!wantShot) {
+                        wantShot = true;
+                        target = robot.location;
+                    }
+                    if(myLocation.distanceTo(robot.getLocation()) < minDist)
                     {
                        gardener = robot;
                        minDist = myLocation.distanceTo(robot.getLocation());
@@ -246,10 +251,12 @@ public strictfp class ScoutPlayer {
         RobotInfo robot = rc.senseRobot(targetId);
         boolean sameHP = robot.getHealth() == lastTargetHP;
         lastTargetHP = robot.getHealth();
-        if( rc.canMove(rc.getLocation().directionTo(robot.getLocation())) ) {
+        if (SharedUtils.isNear(rc.getLocation(), robot.getLocation(), rc.getType().sensorRadius / 2)) {
+            // pick random direction to make it harder for the enemies to shoot the scout while killing the target robot
+            rc.move(SharedUtils.randomDirection());
+        } else if( rc.canMove(rc.getLocation().directionTo(robot.getLocation())) ) {
             rc.move(rc.getLocation().directionTo(robot.getLocation()));
-        }
-        else if (allowTether || sameHP){
+        } else if (allowTether || sameHP){
             Direction newDir = getDodgeDirection(rc, robot, dodgeDir);
             if(rc.canMove(newDir))
                 rc.move(newDir);
