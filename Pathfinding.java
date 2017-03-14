@@ -46,15 +46,16 @@ public class Pathfinding {
      */
 	public boolean FindPath(MapLocation myLoc, MapLocation target, boolean toSquare) {
 		waypoints = new ArrayList<MapLocation>();
-		
+		waypoints.add(myLoc); //starting point (not entred)
+		boolean endEmpty = false;		
 		try {
-			if (toSquare && myLoc.distanceTo(target) < 3F) {
+			if (toSquare && myLoc.distanceTo(target) < 4F) {
 				return false;
 			}
 			gpi.refresh();
 			Diff myDiff = gpi.getSquareLocation(myLoc);
 			//System.out.println(myDiff.dx + " " + myDiff.dy);
-			if (!gpi.usedTargets[(int)(myDiff.dx + 10.0005F) - 8][(int)(myDiff.dy + 10.0005)]) {
+			if (!gpi.usedTargets[(int)(myDiff.dx + 10.1F) - 8][(int)(myDiff.dy + 10.1F)]) {
 				//System.out.println("no place");
 				return false;
 			}
@@ -81,7 +82,7 @@ public class Pathfinding {
 					best = d3;
 					bestID = 3;
 				}
-				switch (bestID) { //needs corrections for negatives, rounding)
+				switch (bestID) { //needs corrections for negatives, rounding
 					case 0:			
 						myDiff.dx = myDiff.dx - best;
 						break;
@@ -94,12 +95,12 @@ public class Pathfinding {
 					case 3:
 						myDiff.dy = myDiff.dy + best;
 						break;
-				}
-									
+				}									
 				waypoints.add(gpi.getMapLocation(myDiff));				
 				//path to corner:
 				Diff nextDiff = new Diff(myDiff.dx, myDiff.dy);
 				//trick: if sum is even, path leads left; if odd, then right.
+				/*
 				float sum = nextDiff.dx + nextDiff.dy + 10;
 				if (Math.abs(sum % 2) >= 1) {
 					if (bestID % 2 == 0)
@@ -112,6 +113,22 @@ public class Pathfinding {
 						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 10;
 					else
 						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 9;
+				}
+				*/
+				
+				
+				if (bestID % 2 == 0) {
+					if (((nextDiff.dx + 10.005F) % 2) >= 1)
+						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 10;
+					else
+						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 9;
+					}
+			
+				else  {
+					//if (((nextDiff.dy + 10.005F) % 2) >= 1)
+						//nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 10;
+					//else
+						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 9;					
 				}
 				/*
 				switch (bestID) {
@@ -130,57 +147,72 @@ public class Pathfinding {
 				}
 				*/
 				waypoints.add(gpi.getMapLocation(nextDiff));
-				//find path to end: //TODO
+				//find path to end: 
 				
 				Diff targetDiff = gpi.getSquareLocation(target);
 				System.out.println("Target: " + target.toString());
 				nextDiff = new Diff(nextDiff.dx, nextDiff.dy);
-				
+
+				int cycles = 0;
 				while (Math.abs(nextDiff.dx - targetDiff.dx) > 1 || Math.abs(nextDiff.dy - targetDiff.dy) > 1) {
-					if (waypoints.size() > 20) { //safety break
+					cycles++;
+					if (cycles > 20) { //safety break
 						break;
 					}
-					if (!gpi.usedTargets[(int)(nextDiff.dx + 0.001*(targetDiff.dx - nextDiff.dx)) + 2][(int)(nextDiff.dy + 0.001*(targetDiff.dy - nextDiff.dy)) + 10]) {
-						waypoints.add(gpi.getMapLocation(new Diff(nextDiff.dx + 0.001F*(targetDiff.dx - nextDiff.dx), (nextDiff.dy + 0.001F*(targetDiff.dy - nextDiff.dy)))));
+					if (!gpi.usedTargets[(int)(nextDiff.dx + 0.01*(targetDiff.dx - nextDiff.dx)) + 2][(int)(nextDiff.dy + 0.01*(targetDiff.dy - nextDiff.dy)) + 10]) {
+						waypoints.add(gpi.getMapLocation(new Diff(nextDiff.dx + 0.01F*(targetDiff.dx - nextDiff.dx), (nextDiff.dy + 0.01F*(targetDiff.dy - nextDiff.dy)))));
+						endEmpty = true;
 						break; //empty space in front of me
 						
 					}
-					if (Math.abs((nextDiff.dx + nextDiff.dy + 10) % 2) < 0.05) { //left or right
-						if (targetDiff.dx > nextDiff.dx) { 
+					boolean isUp = true;
+					boolean isRight = true;
+					//if (((nextDiff.dy + 10.005F) % 2) >= 1)
+						//isRight = false;
+					if (((nextDiff.dx + 10.005F) % 2) >= 1)
+						isUp = false;
+					
+					//right path:
+					if (isRight) {
+						if (targetDiff.dx - nextDiff.dx > 1)
 							nextDiff.dx++;
-						}
-						else {
-							nextDiff.dx--;
-						}
-					}
-					else { //up or down
-						if (targetDiff.dy > nextDiff.dy) { 
+						else if (isUp && targetDiff.dy > nextDiff.dy)
 							nextDiff.dy++;
-						}
-						else {
+						else if (!isUp && targetDiff.dy < nextDiff.dy)
 							nextDiff.dy--;
-						}
+						else
+							nextDiff.dx++;
 					}
+					
 					waypoints.add(gpi.getMapLocation(nextDiff));
 					nextDiff = new Diff(nextDiff.dx, nextDiff.dy);
+					
+					//remove redundant waypoints
+					if (waypoints.size() > 2) {
+						int last = waypoints.size() - 1;
+						if (Math.abs(waypoints.get(last).directionTo(waypoints.get(last - 1)).radiansBetween(waypoints.get(last - 1).directionTo(waypoints.get(last - 2)))) < 0.01) {
+							waypoints.remove(last - 1);
+						}
+					}
 				}
-				for (MapLocation m:waypoints) {
-					System.out.println("Path:" + m.toString());
-				}
+				//for (MapLocation m:waypoints) {
+					//System.out.println("Path:" + m.toString());
+				//}
 				//System.out.println(nextDiff.dx + " " + nextDiff.dy);
 			}				
-			if (toSquare) {
+			if (toSquare && !endEmpty) {
 				waypoints.add(target);
 			}
 		}
 		catch (Exception e) {
-			System.out.println("Pathfinding failed!");
+			System.out.println("Pathfinding failed (crash)!");
+			 e.printStackTrace();
 		}
-		wpID = 0;
+		wpID = 1;
 		return true;		
 	}
 	
-	public int nextPoint(RobotController rc) { //returns: 0 -> walked, 1->returned/stpped, 2-> stopped
+	public int nextPoint(RobotController rc) { //returns: 0 -> walked, 1->returned/stopped, 2-> finished
 		
 		if (wpID == waypoints.size()) {
 			return 2;
@@ -198,7 +230,17 @@ public class Pathfinding {
 					wpID = newwpID;
 					return 0;
 				}
-				
+				//cannot move just after start -> return back to start (otherwise the unit can block path)
+				else if (wpID == 1) {
+					if (rc.getLocation().distanceTo(waypoints.get(0)) < 0.001F) {
+						if (rc.canMove(waypoints.get(1).directionTo(waypoints.get(0))))
+							rc.move(waypoints.get(1).directionTo(waypoints.get(0)));
+					}
+					if (rc.canMove(waypoints.get(0))) {
+						rc.move(waypoints.get(0));
+					}
+					return 1;
+				}
 				else if (waypoints.get(wpID).x < rc.getLocation().x) { //reseni prednosti
 					float dist = (float)Math.random()*rc.getType().strideRadius*2;
 					if (dist > rc.getType().strideRadius)
