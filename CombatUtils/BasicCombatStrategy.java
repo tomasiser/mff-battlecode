@@ -2,6 +2,7 @@ package KSTTForTheWin.CombatUtils;
 
 import KSTTForTheWin.Broadcasting.ArchonLocation;
 import KSTTForTheWin.Broadcasting.Broadcaster;
+import KSTTForTheWin.CombatUtils.SharedCombatUtils.ShotType;
 
 import java.util.*;
 
@@ -20,9 +21,7 @@ public strictfp abstract class BasicCombatStrategy {
     // the model of the environment
     protected RobotController rc;
     protected MapLocation goal;
-    protected boolean goalChanged;
-    protected int lastGoalChange;
-    private MapLocation safeLocation;
+    protected MapLocation safeLocation;
     protected Team enemy;
     protected RobotInfo[] nearbyEnemyRobots;
     protected RobotInfo[] nearbyOurRobots;
@@ -58,23 +57,22 @@ public strictfp abstract class BasicCombatStrategy {
         roundsOnTheSameSpot = 0;
         remainingRandomRounds = 0;
         walked = 0;
-        lastGoalChange = rc.getRoundNum();
         try {
-        	startSquare = this.broadcaster.gardenerInfo.getSquareLocation(me);
-        	myPath = new Pathfinding(this.rc, this.broadcaster);
-        	//wantGuide = myPath.FindPath(rc.getLocation(), broadcaster.findNearestAction());
-        	hasPath = false;
-        	//System.out.println(startSquare.dx + " " + startSquare.dy);
-        	
-        	if (rc.getType() == RobotType.LUMBERJACK) {
-        		wantGuide = false;
-        	}
-        	else {
-        		wantGuide = true;
-        	}
+            startSquare = this.broadcaster.gardenerInfo.getSquareLocation(me);
+            myPath = new Pathfinding(this.rc, this.broadcaster);
+            //wantGuide = myPath.FindPath(rc.getLocation(), broadcaster.findNearestAction());
+            hasPath = false;
+            System.out.println(startSquare.dx + " " + startSquare.dy);
+            
+            if (rc.getType() == RobotType.LUMBERJACK) {
+                wantGuide = false;
+            }
+            else {
+                wantGuide = true;
+            }
         }
         catch (Exception e) {
-        	System.out.println("OUCH! broadcaster cannot refresh");
+            System.out.println("OUCH! broadcaster cannot refresh");
         }
         rnd = new Random();
     }
@@ -83,66 +81,34 @@ public strictfp abstract class BasicCombatStrategy {
      * Make one tick/step of the unit's life.
      */
     public void update() {
-    	//try to get some free improvement
-    	SharedUtils.tryShake(rc);
+        //try to get some free improvement
+        SharedUtils.tryShake(rc);
         SharedUtils.tryToWin(rc);
         
         // prepare for the new turn
         /*
-	    try {
-	    	if (wantGuide && walked < 100) {	    		
-        		walked = SharedUtils.getOut(rc, walked, broadcaster,1); //startSquare[1]);
-        		System.out.println(walked);
-        	}
-	    }
-	    catch (Exception e){
-	     	 System.out.println("KSTT Soldier Init Exception");
-	         e.printStackTrace();
-	    }
-	    
-	    */
-        if ((goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
-        	if (goalChanged && rc.getRoundNum() - lastGoalChange > 10) {
-        		goalChanged = false;
-        		lastGoalChange = rc.getRoundNum();
-        		faults = 0;
-        		hasPath = false;
-        	}
-        	
-	        if(!hasPath) { 
-	        	if (goal != null) //kontola, ze je goal nastaven
-	        		hasPath = myPath.FindPath(rc.getLocation(), goal, wantGuide);
-	        	else
-	        		hasPath = myPath.FindPath(rc.getLocation(), rc.getInitialArchonLocations(rc.getTeam().opponent())[0], wantGuide);
-	        }
-	        if (hasPath) {
-	        	int status = myPath.nextPoint(rc);
-	        	if (status == 2) {
-	        		hasPath = false;
-	        	}
-	        	else if (status == 1) {
-	        		faults++;
-	        		if (faults > 20) {
-	        			faults = 0;
-	        			hasPath = false;
-	        		}
-	        	}
-	        }
+        try {
+            if (wantGuide && walked < 100) {                
+                walked = SharedUtils.getOut(rc, walked, broadcaster,1); //startSquare[1]);
+                System.out.println(walked);
+            }
         }
-        else {
-        	hasPath = false;
+        catch (Exception e){
+              System.out.println("KSTT Soldier Init Exception");
+             e.printStackTrace();
         }
+        
+        */
+
         if (rc.getLocation().equals(me)) {
             roundsOnTheSameSpot++;
-        } 
-        else {
+        } else {
             roundsOnTheSameSpot = 0;
             me = rc.getLocation();
         }
 
         try {
             broadcaster.refresh();
-            broadcaster.tryReportEmptyPlace();
         } catch (GameActionException e) {
             System.out.println("OUCH! broadcaster cannot refresh");
         }
@@ -156,14 +122,12 @@ public strictfp abstract class BasicCombatStrategy {
         if (shouldChooseNewGoal()) {
             setGoal(null); // forget the previous goal
             chooseGoal();
-            goalChanged = true;
         }
 
-        // // DEBUG: place a debug flag on the goal (if any)
-        // if (hasGoal()) {
-        //     rc.setIndicatorDot(goal, 0, 255, 0);
-        //     rc.setIndicatorLine(me, goal, 0, 255, 0);
-        // }
+        // DEBUG: place a debug flag on the goal (if any)
+        if (hasGoal()) {
+            rc.setIndicatorDot(goal, 0, 255, 0);
+        }
 
         // default behavior is to get closer to the global goal (if there is any)
         MapLocation currentGoal = goal;
@@ -171,10 +135,13 @@ public strictfp abstract class BasicCombatStrategy {
         lookAround();
 
         // fight the enemies if they are nearby
+        RobotInfo target = null;
+        boolean hasShotAtTarget = false;
+
         if (shouldFight()) {
-            RobotInfo target = chooseBestShootingTarget();
+            target = chooseBestShootingTarget();
             if (target != null) {
-                shootAt(target);
+                hasShotAtTarget = shootAt(target);
             }
         }
 
@@ -188,28 +155,60 @@ public strictfp abstract class BasicCombatStrategy {
                 System.out.println("I try to call for help, but the radio does not work!");
             }
         }
-
-        // DEBUG: mark the current goal
-        // if (currentGoal != null) {
-        //     rc.setIndicatorLine(me, currentGoal, 255, 0, 0);
-        // }
+        
+        if (target != null) {
+            rc.setIndicatorDot(target.getLocation(), 255, 0, 0);
+        }
 
         if (stuckForTooLong()) {
             remainingRandomRounds += 10; // wander around for a while to get from the dead end
         }
 
-        if (!hasPath) {
-	        // check if there is a risk of being hit by a bullet
-	        BulletInfo dangerousBullet = getMostDangerousBullet();
-	        if (dangerousBullet != null) {
-	            dodgeBullet(dangerousBullet);
-	        } else if (remainingRandomRounds > 0) {
-	            moveRandomly();
-	            remainingRandomRounds--;
-	        } else if (currentGoal != null) {
-	            // move in the direction of the goal of this round
-	            moveTowardsAGoal(currentGoal);
-	        }
+        // check if there is a risk of being hit by a bullet
+        BulletInfo dangerousBullet = getMostDangerousBullet();
+        boolean hasDodged = false;
+
+        if (dangerousBullet != null) {
+            Direction myShot = hasShotAtTarget ? me.directionTo(target.getLocation()) : null;
+            hasDodged = dodgeBullet(myShot, dangerousBullet);
+        }
+
+        if (!hasDodged && !hasShotAtTarget) {
+            // I am not in a fight, I can move as I wish
+            if (wantGuide && (goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
+                if (faults > 20)
+                    faults++;
+                if (faults > 40)
+                    faults = 0;
+                if(faults <= 20 && !hasPath) { 
+                    hasPath = myPath.FindPath(rc.getLocation(), goal);
+                }
+                if (hasPath) {
+                    int status = myPath.nextPoint(rc);
+                    if (status == 2) {
+                        hasPath = false;
+                    }
+                    else if (status == 1) {
+                        faults++;
+                        if (faults > 20) {
+                            hasPath = false;
+                        }
+                    }
+                }
+            }
+            else {
+                hasPath = false;
+            }
+            
+            if (!hasPath) {
+                if (remainingRandomRounds > 0) {
+                    moveRandomly();
+                    remainingRandomRounds--;
+                } else if (currentGoal != null) {
+                    // move in the direction of the goal of this round
+                    moveTowardsAGoal(currentGoal);
+                }
+            }
         }
     }
 
@@ -217,16 +216,23 @@ public strictfp abstract class BasicCombatStrategy {
      * No time for reaching goals - just try to survive!
      * @param dangerousBullet The bullet which might hit me
      */
-    private void dodgeBullet(BulletInfo dangerousBullet) {
+    private boolean dodgeBullet(Direction myShot, BulletInfo dangerousBullet) {
         // DEBUG: mark the bullet and the robot it endangers
-        //rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
-        //rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
+        rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
+        rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
+        boolean hasDodged = false;
 
         try {
-            SharedUtils.tryMove(rc, SharedUtils.getDodgeDirection(rc, dangerousBullet));
+            Direction dodgeDirection = SharedUtils.getDodgeDirection(rc, dangerousBullet);
+            if (myShot == null || Math.abs(dodgeDirection.degreesBetween(myShot)) > 45) {
+                SharedUtils.tryMove(rc, dodgeDirection);
+                hasDodged = true;
+            }
         } catch (GameActionException e) {
             // whaaaat???!!! I might die!!
         }
+
+        return hasDodged;
     }
 
     /**
@@ -251,6 +257,30 @@ public strictfp abstract class BasicCombatStrategy {
         }
 
         nearbyBullets = rc.senseNearbyBullets();
+    }
+
+
+    /**
+     * Find a target which should be targeted first.
+     * @return The nearest enemy with the highest priority (by its type)
+     */
+    protected RobotInfo chooseBestShootingTarget() {
+        RobotInfo nearest = null;
+        for (RobotInfo robot : nearbyEnemyRobots) {
+            if ((nearest == null ||
+                    SharedCombatUtils.getTargetPriority(robot.getType()) > SharedCombatUtils.getTargetPriority(nearest.getType()) ||
+                    me.distanceSquaredTo(robot.getLocation()) < me.distanceSquaredTo(nearest.getLocation())) &&
+                    !SharedCombatUtils.isItObviouslyStupidToFireInDirection(me, me.directionTo(robot.getLocation()), nearbyEnemyRobots, nearbyOurRobots, nearbyTrees)) {
+                nearest = robot;
+            }
+        }
+
+        // DEBUG: mark the target
+        if (nearest != null) {
+            rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
+        }
+
+        return nearest;
     }
 
     /**
@@ -346,53 +376,6 @@ public strictfp abstract class BasicCombatStrategy {
     }
 
     /**
-     * Find a target which should be targeted first.
-     * @return The nearest enemy with the highest priority (by its type)
-     */
-    protected RobotInfo chooseBestShootingTarget() {
-        RobotInfo nearest = null;
-        for (RobotInfo robot : nearbyEnemyRobots) {
-            if ((nearest == null ||
-                    getTargetPriority(robot.getType()) > getTargetPriority(nearest.getType()) ||
-                    me.distanceSquaredTo(robot.getLocation()) < me.distanceSquaredTo(nearest.getLocation())) &&
-                    !isItObviouslyStupidToFireAt(robot.getLocation())) {
-                nearest = robot;
-            }
-        }
-
-        // DEBUG: mark the target
-        if (nearest != null) {
-            //rc.setIndicatorDot(nearest.getLocation(), 125, 0, 0);
-        }
-
-        return nearest;
-    }
-
-    /**
-     * Get the priority of a targeted enemy by its type.
-     * @param type The type of the enemy.
-     * @return The number which denotes the
-     */
-    private int getTargetPriority(RobotType type) {
-        switch (type) {
-            case TANK:
-                return 6; // destroy the defenders first
-            case SOLDIER:
-                return 5;
-            case ARCHON:
-                return 4;
-            case GARDENER:
-                return 3;
-            case SCOUT:
-                return 2;
-            case LUMBERJACK:
-                return 1;
-            default:
-                return 0;
-        }
-    }
-
-    /**
      * Choosing a new goal is potentially a computationally heavy operation, do not do that unless necessary.
      * @return Choose next goal when there is no goal ready yet.
      */
@@ -460,56 +443,37 @@ public strictfp abstract class BasicCombatStrategy {
      * @param targetRobot The enemy to shoot at.
      * @param shootBurst Shoot single shot or
      */
-    private void shootAt(RobotInfo targetRobot) {
-        if (targetRobot != null && hasEnoughAmmunition() && !isItObviouslyStupidToFireAt(targetRobot.getLocation())) {
-            Direction direction = me.directionTo(targetRobot.location);
-            shoot(direction);
+    private boolean shootAt(RobotInfo targetRobot) {
+        boolean shot = false;
 
-            // only ARCHONS are interesting
-            if (targetRobot.getType() == RobotType.ARCHON) {
-                lastTarget = targetRobot;
-                archonTarget = broadcaster.getArchonAtPosition(targetRobot.getLocation());
+        if (targetRobot != null) {   
+            Direction direction = me.directionTo(targetRobot.location);
+            if (!SharedCombatUtils.isItObviouslyStupidToFireInDirection(me, direction, nearbyEnemyRobots, nearbyOurRobots, nearbyTrees)) {
+                // If I shot at the robot, place a red dot on it
+                if (shoot(direction)) {
+                    rc.setIndicatorDot(targetRobot.getLocation(), 255, 0, 0);
+                    shot = true;
+                }
+
+                // only ARCHONS are interesting
+                if (targetRobot.getType() == RobotType.ARCHON) {
+                    lastTarget = targetRobot;
+                    archonTarget = broadcaster.getArchonAtPosition(targetRobot.getLocation());
+                }
             }
         }
+
+        return shot;
     }
 
     /**
-     * Do not waste any ammunition and aim exactelly at the target!
-     * @param targetRobot The robot to shoot at.
+     * Shoot in the given direction.
+     * @return True if the robot did fire the shot(s) successfully.
      */
     protected boolean shoot(Direction direction) {
-        boolean success = true;
-        try {
-            if (shouldFirePentad(direction)) {
-                rc.firePentadShot(direction);
-            } else if (shouldFireTriad(direction)) {
-                rc.fireTriadShot(direction);
-            } else {
-                rc.fireSingleShot(direction);
-            }
-        } catch (GameActionException e) {
-            success = false;
-        }
-
-        return success;
+        return SharedCombatUtils.shoot(rc, direction, nearbyEnemyRobots, nearbyOurRobots, nearbyTrees);
     }
 
-    /**
-     * Check if there is no obvious reason not to shoot at the target.
-     * @param targetRobot The robot I want to shoot at.
-     * @return True when it should be OK to fire at the target.
-     */
-    protected boolean isItObviouslyStupidToFireAt(MapLocation target) {
-        return shouldNotFireSingle(me.directionTo(target));
-    }
-
-    /**
-     * Can I shoot at this moment?
-     * @return True when it is OK to fire (considering the amount of the team's bullets)
-     */
-    private boolean hasEnoughAmmunition() {
-        return rc.canFirePentadShot();
-    }
 
     /**
      * If I shot at some robot last turn, it maybe died. At it could have been enemy ARCHON!!
@@ -535,101 +499,6 @@ public strictfp abstract class BasicCombatStrategy {
     private boolean isDead(RobotInfo robot) {
         // well... 2 does not mean dead, but someone must be shooting at it right at the moment and will probably finish it off!!
         return robot.getHealth() <= 10;
-    }
-
-
-    /**
-     * Check if there is no obvious reason not to shoot at the target.
-     * @param targetRobot The robot I want to shoot at.
-     * @return True when it should be OK to fire at the target.
-     */
-    protected boolean shouldNotFireSingle(Direction direction) {
-        boolean willHitSomeNearbyEnemyRobot = false;
-        for (RobotInfo enemyRobot : nearbyEnemyRobots) {
-            MapLocation target = enemyRobot.getLocation();
-            if (SharedUtils.willCollide(me, target, enemyRobot.getRadius(), direction)) {
-                boolean isGoodTarget = true;            
-                // look for the teammates and trees which are in the way
-                for (RobotInfo ourRobot : nearbyOurRobots) {
-                    if (me.distanceSquaredTo(ourRobot.getLocation()) < me.distanceSquaredTo(target)
-                            && SharedUtils.willCollide(me, ourRobot.getLocation(), ourRobot.getRadius(), direction)) {
-                        isGoodTarget = false;
-                        break;
-                    }
-                }
-
-                // trees can be destroyed by bullets, but bullets meant for the enemies!!
-                for (TreeInfo tree : nearbyTrees) {
-                    if (tree.team != rc.getTeam().opponent() && me.distanceSquaredTo(tree.getLocation()) < me.distanceSquaredTo(target)
-                            && SharedUtils.willCollide(me, tree.getLocation(), tree.getRadius(), direction)) {
-                        isGoodTarget = false;
-                        break;
-                    }
-                }
-
-                if (isGoodTarget) {
-                    willHitSomeNearbyEnemyRobot = true;
-                    break;
-                }
-            }
-        }
-
-        return !willHitSomeNearbyEnemyRobot;
-    }
-
-    /**
-     * Check if there is no obvious reason not to shoot at the target.
-     * @param direction The direction of the shot.
-     * @return True when it should be OK to fire at the target.
-     */
-    protected boolean shouldFireSingle(Direction direction) {
-        return !shouldNotFireSingle(direction);
-    }
-
-    /**
-     * Check if the direction is suitable for a triad shot.
-     * @param The middle direction in which we could fire.
-     * @return True when the triad shot is good option.
-     */
-    protected boolean shouldFireTriad(Direction direction) {
-        ArrayList<Direction> triadDirections = new ArrayList(3);
-        triadDirections.add(direction);
-        triadDirections.add(direction.rotateLeftDegrees(20f));
-        triadDirections.add(direction.rotateRightDegrees(20f));
-
-        return shouldFireMultiple(triadDirections.toArray(new Direction[0]));
-    }
-
-    /**
-     * Check if the direction is suitable for a pentad shot.
-     * @param The middle direction in which we could fire.
-     * @return True when the triad shot is good option.
-     */
-    protected boolean shouldFirePentad(Direction direction) {
-        ArrayList<Direction> pentadDirections = new ArrayList(5);
-        pentadDirections.add(direction);
-        pentadDirections.add(direction.rotateLeftDegrees(15f));
-        pentadDirections.add(direction.rotateLeftDegrees(30f));
-        pentadDirections.add(direction.rotateRightDegrees(15f));
-        pentadDirections.add(direction.rotateRightDegrees(30f));
-
-        return shouldFireMultiple(pentadDirections.toArray(new Direction[0]));
-    }
-
-    /**
-     * Check if the direction is suitable for a multiple shot (pentad, triad).
-     * @param directions The directions in which we could fire.
-     * @return True when the triad shot is good option.
-     */
-    private boolean shouldFireMultiple(Direction[] directions) {
-        float score = 0;
-        //System.out.println(directions.length);
-        for (Direction direction : directions) {
-            System.out.println(direction.getAngleDegrees());
-            //score += shouldFireSingle(direction) ? 1f : 0f;
-        }
-
-        return (score / directions.length) > 0.35f;
     }
 
 }
