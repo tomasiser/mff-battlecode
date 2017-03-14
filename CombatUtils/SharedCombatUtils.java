@@ -143,7 +143,7 @@ public final class SharedCombatUtils {
             score += shouldFireSingle(me, direction, nearbyEnemyRobots, nearbyOurRobots, nearbyTrees) ? 1f : 0f;
         }
 
-        return (score / directions.length) > 0.5f; // most of the shots are successful
+        return (score / directions.length) > 0.4f; // some of the shots are successful -- the more shots the soldier shoots, the harder it is to avoid the bullets for the enemy
     }
 
     /**

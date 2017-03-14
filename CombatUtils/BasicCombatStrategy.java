@@ -21,7 +21,7 @@ public strictfp abstract class BasicCombatStrategy {
     // the model of the environment
     protected RobotController rc;
     protected MapLocation goal;
-    private MapLocation safeLocation;
+    protected MapLocation safeLocation;
     protected Team enemy;
     protected RobotInfo[] nearbyEnemyRobots;
     protected RobotInfo[] nearbyOurRobots;
@@ -99,30 +99,7 @@ public strictfp abstract class BasicCombatStrategy {
         }
         
         */
-        if (wantGuide && (goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
-            if (faults > 20)
-                faults++;
-            if (faults > 40)
-                faults = 0;
-            if(faults <= 20 && !hasPath) { 
-                hasPath = myPath.FindPath(rc.getLocation(), goal);
-            }
-            if (hasPath) {
-                int status = myPath.nextPoint(rc);
-                if (status == 2) {
-                    hasPath = false;
-                }
-                else if (status == 1) {
-                    faults++;
-                    if (faults > 20) {
-                        hasPath = false;
-                    }
-                }
-            }
-        }
-        else {
-            hasPath = false;
-        }
+
         if (rc.getLocation().equals(me)) {
             roundsOnTheSameSpot++;
         } else {
@@ -159,10 +136,12 @@ public strictfp abstract class BasicCombatStrategy {
 
         // fight the enemies if they are nearby
         RobotInfo target = null;
+        boolean hasShotAtTarget = false;
+
         if (shouldFight()) {
             target = chooseBestShootingTarget();
             if (target != null) {
-                shootAt(target);
+                hasShotAtTarget = shootAt(target);
             }
         }
 
@@ -185,17 +164,50 @@ public strictfp abstract class BasicCombatStrategy {
             remainingRandomRounds += 10; // wander around for a while to get from the dead end
         }
 
-        if (!hasPath) {
-            // check if there is a risk of being hit by a bullet
-            BulletInfo dangerousBullet = getMostDangerousBullet();
-            if (dangerousBullet != null) {
-                dodgeBullet(dangerousBullet);
-            } else if (remainingRandomRounds > 0) {
-                moveRandomly();
-                remainingRandomRounds--;
-            } else if (currentGoal != null) {
-                // move in the direction of the goal of this round
-                moveTowardsAGoal(currentGoal);
+        // check if there is a risk of being hit by a bullet
+        BulletInfo dangerousBullet = getMostDangerousBullet();
+        boolean hasDodged = false;
+
+        if (dangerousBullet != null) {
+            Direction myShot = hasShotAtTarget ? me.directionTo(target.getLocation()) : null;
+            hasDodged = dodgeBullet(myShot, dangerousBullet);
+        }
+
+        if (!hasDodged && !hasShotAtTarget) {
+            // I am not in a fight, I can move as I wish
+            if (wantGuide && (goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
+                if (faults > 20)
+                    faults++;
+                if (faults > 40)
+                    faults = 0;
+                if(faults <= 20 && !hasPath) { 
+                    hasPath = myPath.FindPath(rc.getLocation(), goal);
+                }
+                if (hasPath) {
+                    int status = myPath.nextPoint(rc);
+                    if (status == 2) {
+                        hasPath = false;
+                    }
+                    else if (status == 1) {
+                        faults++;
+                        if (faults > 20) {
+                            hasPath = false;
+                        }
+                    }
+                }
+            }
+            else {
+                hasPath = false;
+            }
+            
+            if (!hasPath) {
+                if (remainingRandomRounds > 0) {
+                    moveRandomly();
+                    remainingRandomRounds--;
+                } else if (currentGoal != null) {
+                    // move in the direction of the goal of this round
+                    moveTowardsAGoal(currentGoal);
+                }
             }
         }
     }
@@ -204,16 +216,23 @@ public strictfp abstract class BasicCombatStrategy {
      * No time for reaching goals - just try to survive!
      * @param dangerousBullet The bullet which might hit me
      */
-    private void dodgeBullet(BulletInfo dangerousBullet) {
+    private boolean dodgeBullet(Direction myShot, BulletInfo dangerousBullet) {
         // DEBUG: mark the bullet and the robot it endangers
         rc.setIndicatorDot(dangerousBullet.getLocation(),0,255,255);
         rc.setIndicatorLine(me, dangerousBullet.getLocation(),0,255,255);
+        boolean hasDodged = false;
 
         try {
-            SharedUtils.tryMove(rc, SharedUtils.getDodgeDirection(rc, dangerousBullet));
+            Direction dodgeDirection = SharedUtils.getDodgeDirection(rc, dangerousBullet);
+            if (myShot == null || Math.abs(dodgeDirection.degreesBetween(myShot)) > 45) {
+                SharedUtils.tryMove(rc, dodgeDirection);
+                hasDodged = true;
+            }
         } catch (GameActionException e) {
             // whaaaat???!!! I might die!!
         }
+
+        return hasDodged;
     }
 
     /**
@@ -424,13 +443,16 @@ public strictfp abstract class BasicCombatStrategy {
      * @param targetRobot The enemy to shoot at.
      * @param shootBurst Shoot single shot or
      */
-    private void shootAt(RobotInfo targetRobot) {
+    private boolean shootAt(RobotInfo targetRobot) {
+        boolean shot = false;
+
         if (targetRobot != null) {   
             Direction direction = me.directionTo(targetRobot.location);
             if (!SharedCombatUtils.isItObviouslyStupidToFireInDirection(me, direction, nearbyEnemyRobots, nearbyOurRobots, nearbyTrees)) {
                 // If I shot at the robot, place a red dot on it
                 if (shoot(direction)) {
                     rc.setIndicatorDot(targetRobot.getLocation(), 255, 0, 0);
+                    shot = true;
                 }
 
                 // only ARCHONS are interesting
@@ -440,6 +462,8 @@ public strictfp abstract class BasicCombatStrategy {
                 }
             }
         }
+
+        return shot;
     }
 
     /**

@@ -7,10 +7,18 @@ import battlecode.common.Team;
 /**
  * This strategy should go for the location where some help is needed.
  */
-public class DefenderCombatStrategy extends BasicCombatStrategy {
+public class DefenderCombatStrategy extends AttackerCombatStrategy {
 
     public DefenderCombatStrategy(RobotController rc, Team enemy) {
         super(rc, enemy);
+        System.out.println("Defender!");
+        goal = null; // start by waiting
+    }
+
+
+    @Override
+    public void update() {
+        super.update();
     }
 
     /**
@@ -19,12 +27,7 @@ public class DefenderCombatStrategy extends BasicCombatStrategy {
      */
     @Override
     protected boolean chooseGoal() {
-        MapLocation loc = broadcaster.findNearestHelp();
-        if (loc != null && !isVeryClose(loc)) {
-            setGoal(loc);
-            return true;
-        }
-
-        return false;
+        setGoal(safeLocation); // return where the robot was born to defend the base
+        return true;
     }
 }

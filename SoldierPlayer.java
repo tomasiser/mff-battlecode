@@ -14,9 +14,9 @@ public strictfp class SoldierPlayer {
     static Broadcaster broadcaster;
     static RobotController rc;
     static Random rnd = new Random();
-    static double attackerChance = 0.6;
+    static double attackerChance = 0.4;
 
-	static void runSoldier(RobotController rcon) throws GameActionException {
+    static void runSoldier(RobotController rcon) throws GameActionException {
         // System.out.println("I'm a KSTT soldier!");
         rc = rcon;
         Team enemy = rc.getTeam().opponent();
@@ -33,6 +33,11 @@ public strictfp class SoldierPlayer {
             try {
                 // The strategy controls the soldier
                 strategy.update();
+
+                // if the game is too long, change all the defenders into attackers
+                if (strategy instanceof DefenderCombatStrategy && rc.getRoundNum() > 1000) {
+                    strategy = new AttackerCombatStrategy(rc, enemy);
+                }
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();

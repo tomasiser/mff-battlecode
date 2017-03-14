@@ -15,7 +15,7 @@ import java.util.Random;
 public class AttackerCombatStrategy extends BasicCombatStrategy {
 
     private final double HELP_PROBABILITY = 0.5;
-    private final double DESTROY_ENEMY_FIRST_PROBABILITY = 0.05;
+    private final double DESTROY_ENEMY_FIRST_PROBABILITY = 0.8;
     private MapLocation prevGoal;
 
     public AttackerCombatStrategy(RobotController rc, Team enemy) {
