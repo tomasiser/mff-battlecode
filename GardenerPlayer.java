@@ -251,6 +251,7 @@ public strictfp class GardenerPlayer {
         					targetAcquired = false;
         					seekHole = false;
         					System.out.println("throwed");
+        					SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
         					continue;
         				}
         			}
@@ -283,7 +284,7 @@ public strictfp class GardenerPlayer {
 									SharedUtils.tryMove(rc, rc.getLocation().directionTo(finalLocation));
 							}
             			}
-						if (rc.getLocation().distanceTo(finalLocation) < 0.3F) {
+						if (rc.getLocation().distanceTo(finalLocation) < 1F) {
 							onPlace = true;
 							broadcaster.removeEmptyPlace(finalLocation);
 						}

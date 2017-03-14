@@ -45,6 +45,8 @@ public class Pathfinding {
      * @return whether some path was created (not done if not in used square)
      */
 	public boolean FindPath(MapLocation myLoc, MapLocation target, boolean toSquare) {
+    if (target == null)
+      return false;
 		waypoints = new ArrayList<MapLocation>();
 		waypoints.add(myLoc); //starting point (not entred)
 		boolean endEmpty = false;		
