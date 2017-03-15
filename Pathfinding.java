@@ -14,8 +14,10 @@ public class Pathfinding {
 	static List<MapLocation> waypoints;
 	static int wpID = 0;
 	static GardenerPlacementInfo gpi;
+	static RobotController rc;
 	public Pathfinding(RobotController rc, Broadcaster br) {
 		gpi = br.gardenerInfo;
+		this.rc = rc;
 		try {
 			gpi.refresh();
 		}
@@ -45,8 +47,8 @@ public class Pathfinding {
      * @return whether some path was created (not done if not in used square)
      */
 	public boolean FindPath(MapLocation myLoc, MapLocation target, boolean toSquare) {
-    if (target == null)
-      return false;
+		if (target == null)
+			return false;
 		waypoints = new ArrayList<MapLocation>();
 		waypoints.add(myLoc); //starting point (not entred)
 		boolean endEmpty = false;		
@@ -59,7 +61,16 @@ public class Pathfinding {
 			//System.out.println(myDiff.dx + " " + myDiff.dy);
 			if (!gpi.usedTargets[(int)(myDiff.dx + 10.1F) - 8][(int)(myDiff.dy + 10.1F)]) {
 				//System.out.println("no place");
-				return false;
+				if (rc.canMove(rc.getLocation().directionTo(target))) {
+					waypoints.add(rc.getLocation().add(rc.getLocation().directionTo(target), rc.getType().strideRadius - 0.001F));
+					wpID = 1;
+					System.out.println("free" + waypoints.get(1).toString());
+					return true;
+				}
+				else {
+					System.out.println("not free");
+					return false;
+				}
 			}
 			else {								
 				float d0 = (myDiff.dx + 10) % 1; //+10 to avoid negative modulo
@@ -101,26 +112,25 @@ public class Pathfinding {
 				waypoints.add(gpi.getMapLocation(myDiff));				
 				//path to corner:
 				Diff nextDiff = new Diff(myDiff.dx, myDiff.dy);
-				//trick: if sum is even, path leads left; if odd, then right.
 				/*
-				float sum = nextDiff.dx + nextDiff.dy + 10;
-				if (Math.abs(sum % 2) >= 1) {
-					if (bestID % 2 == 0)
-						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 9;
-					else
-						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 10;
-				}
-				else {
-					if (bestID % 2 == 0)
-						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 10;
-					else
-						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 9;
-				}
-				*/
-				
 				
 				if (bestID % 2 == 0) {
 					if (((nextDiff.dx + 10.005F) % 2) >= 1)
+						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 10;
+					else
+						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 9;
+					}
+			
+				else  {
+					if (((nextDiff.dy + 10.005F) % 2) >= 1)
+						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 10;
+					else
+						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 9;					
+				}
+				*/
+
+				if (bestID % 2 == 0) {
+					if (nextDiff.dy > 0.5F)
 						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 10;
 					else
 						nextDiff.dy = (int)(nextDiff.dy + 10.0005F) - 9;
@@ -132,25 +142,9 @@ public class Pathfinding {
 					//else
 						nextDiff.dx = (int)(nextDiff.dx + 10.0005F) - 9;					
 				}
-				/*
-				switch (bestID) {
-					case 0:			
-						nextDiff.dy = (int)(nextDiff.dy) + 1;
-						break;
-					case 1:
-						nextDiff.dx = (int)(nextDiff.dx);
-						break;
-					case 2:
-						nextDiff.dy = (int)(nextDiff.dy);
-						break;
-					case 3:
-						nextDiff.dx = (int)(nextDiff.dx) + 1;
-						break;
-				}
-				*/
 				waypoints.add(gpi.getMapLocation(nextDiff));
-				//find path to end: 
 				
+				//find path to end: 
 				Diff targetDiff = gpi.getSquareLocation(target);
 				System.out.println("Target: " + target.toString());
 				nextDiff = new Diff(nextDiff.dx, nextDiff.dy);
@@ -167,6 +161,7 @@ public class Pathfinding {
 						break; //empty space in front of me
 						
 					}
+					/*
 					boolean isUp = true;
 					boolean isRight = true;
 					//if (((nextDiff.dy + 10.005F) % 2) >= 1)
@@ -185,7 +180,8 @@ public class Pathfinding {
 						else
 							nextDiff.dx++;
 					}
-					
+					*/
+					nextDiff.dx++;
 					waypoints.add(gpi.getMapLocation(nextDiff));
 					nextDiff = new Diff(nextDiff.dx, nextDiff.dy);
 					
@@ -197,9 +193,9 @@ public class Pathfinding {
 						}
 					}
 				}
-				//for (MapLocation m:waypoints) {
-					//System.out.println("Path:" + m.toString());
-				//}
+				for (MapLocation m:waypoints) {
+					System.out.println("Path:" + m.toString());
+				}
 				//System.out.println(nextDiff.dx + " " + nextDiff.dy);
 			}				
 			if (toSquare && !endEmpty) {
@@ -208,14 +204,15 @@ public class Pathfinding {
 		}
 		catch (Exception e) {
 			System.out.println("Pathfinding failed (crash)!");
-			 e.printStackTrace();
+			e.printStackTrace();
 		}
 		wpID = 1;
 		return true;		
 	}
 	
 	public int nextPoint(RobotController rc) { //returns: 0 -> walked, 1->returned/stopped, 2-> finished
-		
+		if (rc.hasMoved()) //moved already by some another source -> dont do anything
+			return 0;
 		if (wpID == waypoints.size()) {
 			return 2;
 		}	
@@ -230,7 +227,12 @@ public class Pathfinding {
 					}
 					rc.move(waypoints.get(wpID));
 					wpID = newwpID;
-					return 0;
+					if (wpID == waypoints.size()) {
+						return 2;
+					}
+					else {
+						return 0;
+					}
 				}
 				//cannot move just after start -> return back to start (otherwise the unit can block path)
 				else if (wpID == 1) {
@@ -262,8 +264,9 @@ public class Pathfinding {
 			}
 			catch (Exception e) {
 				System.out.println("pathfinding crash");
+				e.printStackTrace();
 			}
-			return 0;
+			return 2;
 		}		
 	}
 }

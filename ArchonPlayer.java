@@ -42,7 +42,7 @@ public strictfp class ArchonPlayer {
                     if (mainArchon) {
                         System.out.println("Archon " + rc.getID() + " is main!");
                         Direction toEnemy = new Direction(myLocation, enemyArchonLocations[0]);
-                        broadcaster.gardenerInfo.initialize(myLocation.add(toEnemy, GardenerPlacementInfo.LINE_DISTANCE / 2f), toEnemy);
+                        broadcaster.gardenerInfo.initialize(myLocation.add(toEnemy, GardenerPlacementInfo.LINE_DISTANCE / 2f).add(toEnemy.rotateRightDegrees(90), GardenerPlacementInfo.NEIGHBOUR_DISTANCE / 2f), toEnemy);
                     }
                 } else {
                     broadcaster.refresh();
@@ -59,7 +59,6 @@ public strictfp class ArchonPlayer {
                     rc.donate(rc.getTeamBullets());
                 }
 
-                // Generate a random direction
                 
                 Direction dir;
                 broadcaster.gardenerInfo.refresh();
@@ -78,7 +77,7 @@ public strictfp class ArchonPlayer {
                 	rc.broadcastInt(Broadcaster.GARDENER_COUNT, 0);
                 // attempt to build a gardener in this direction
                 if (dir!= null && rc.canHireGardener(dir) && rc.getTeamBullets() > 125 &&
-                		(built - broadcaster.gardenerInfo.getRealGardenerCount()) < 2) { //TODO!!!
+                		(built - broadcaster.gardenerInfo.getRealGardenerCount()) < 2 + (rc.getRoundNum() / 500)) { 
             		built++;
                 	rc.hireGardener(dir);
                     //if (!builtTreeGardener) builtTreeGardener = true;
@@ -88,7 +87,8 @@ public strictfp class ArchonPlayer {
                 // Move away from action
                 Direction away = (new Direction(myLocation, broadcaster.findNearestAction())).opposite();
                 SharedUtils.tryMove(rc, away);
-
+                // if moved far enough, move the base line.
+                //TODO
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 

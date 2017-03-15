@@ -88,8 +88,6 @@ public strictfp class GardenerPlayer {
 	        //EXPERIMENTAL:
 	        
 	        unitHole.rotate(rotation);
-	        //gardenerDist.rotate(rotation);
-			//archonDist.rotate(rotation);
 			for (Diff loc: treeLocations) {
 				loc.rotate(rotation);
 			}
@@ -141,9 +139,12 @@ public strictfp class GardenerPlayer {
 		boolean hasPath = false;
 		boolean underAtack = false;
 		boolean seekHole = false;
+		boolean arranged = false;
+		int lastSoldier = 0;
 		int holeX = 1000;
 		int holeY = 1000;
 		Pathfinding myPath;
+		int notMoved = 0;
 		myPath = new Pathfinding(rc, broadcaster);
         while (true) {    	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
@@ -218,9 +219,10 @@ public strictfp class GardenerPlayer {
 				        }   				
 					}
 									
-        			if (myLife > 100 && lumberjackBuilt == false && rc.getTeamBullets() > 100) {
-        				if (rc.senseNearbyTrees(3F, Team.NEUTRAL).length > 0) {
-	        				Direction freeDir = SharedUtils.tryFindPlace(rc, baseFloat);
+        			if (myLife > 80 && lumberjackBuilt == false && rc.getTeamBullets() > 100) {
+        				TreeInfo[] trees = rc.senseNearbyTrees(3F, Team.NEUTRAL);
+        				if (trees.length > 0) {
+	        				Direction freeDir = SharedUtils.tryFindPlace(rc, rc.getLocation().directionTo(trees[0].getLocation()).radians);
 	        				if (freeDir != null && rc.canBuildRobot(RobotType.LUMBERJACK, freeDir)) {
 	        					rc.buildRobot(RobotType.LUMBERJACK, freeDir);
 	        					lumberjackBuilt = true;
@@ -291,6 +293,25 @@ public strictfp class GardenerPlayer {
 					}
         		}
         		else {
+        			//rearrange the hole and tree sequence (once)
+        			if (!arranged) {
+        				arranged = true;
+	        			Diff myPos = broadcaster.gardenerInfo.getSquareLocation(rc.getLocation());
+	        			if (myPos.dy > 1) {
+	        				Diff tempUnitHole = new Diff(unitHole.dx, unitHole.dy);
+	        				unitHole.dx = treeLocations[5].dx;
+	        				unitHole.dy = treeLocations[5].dy;
+	        				treeLocations[5].dx = tempUnitHole.dx;
+	        				treeLocations[5].dy = tempUnitHole.dy;	 
+	        			}
+	        			else if (myPos.dy < 0) {
+	        				Diff tempUnitHole = new Diff(unitHole.dx, unitHole.dy);
+	        				unitHole.dx = treeLocations[6].dx;
+	        				unitHole.dy = treeLocations[6].dy;
+	        				treeLocations[6].dx = tempUnitHole.dx;
+	        				treeLocations[6].dy = tempUnitHole.dy;	 
+	        			}
+        			}
             		//check whether I have built all trees
             		//List<Integer> toRemove = new ArrayList<>();
             		int wantBuild = -1;
@@ -298,8 +319,8 @@ public strictfp class GardenerPlayer {
             		if (seekHole) {
             			for (int id = 0; id < builtTrees.length; id++) {
                 			TreeInfo myTree = rc.senseTreeAtLocation(treeLocations[id].add(finalLocation));
-                			if (myTree != null) {
-                				//System.out.println("Tree disapeared!");
+                			if (myTree != null && myTree.team == rc.getTeam()) {
+                				//System.out.println("Tree found!");
                 				builtTrees[id] = true;
                 				myTrees++;
                 			}          			
@@ -330,6 +351,18 @@ public strictfp class GardenerPlayer {
             				}
             			}
             		}
+            		//is there any tree, which is neutral? (blocking path)
+            		if (!lumberjackBuilt) {
+            			TreeInfo[] trees = rc.senseNearbyTrees(4.5F, Team.NEUTRAL);
+        				if (trees.length > 0) {
+	        				Direction freeDir = SharedUtils.tryFindPlace(rc, rc.getLocation().directionTo(trees[0].getLocation()).radians);
+	        				if (freeDir != null && rc.canBuildRobot(RobotType.LUMBERJACK, freeDir)) {
+	        					rc.buildRobot(RobotType.LUMBERJACK, freeDir);
+	        					lumberjackBuilt = true;
+	        				}
+        				}
+            		}
+            			
             		if (wantBuild >= 0 && !underAtack) {
             			//primy posun
             			if (!rc.isCircleOccupiedExceptByThisRobot(treeLocations[wantBuild].addChanged(finalLocation, 2.01F), 1F) &&
@@ -402,14 +435,16 @@ public strictfp class GardenerPlayer {
             			}
             		}
         			
-                    if ((rc.getTeamBullets() > 400 || (underAtack && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
+                    if (rc.getRoundNum() - lastSoldier >= 20 && (rc.getTeamBullets() > 400 || (underAtack && rc.getTeamBullets() >= 100)) && !rc.isCircleOccupied(unitHole.add(finalLocation), 1F)) {
                     	underAtack = false;
-                    	if ((unitsMade % 5) != 3 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.getDirection())) {
+                    	if ((unitsMade % 5) != 1 && rc.canBuildRobot(RobotType.SOLDIER, unitHole.getDirection())) {
                     		rc.buildRobot(RobotType.SOLDIER, unitHole.getDirection());
+                    		lastSoldier = rc.getRoundNum();
                     		unitsMade++;
                     	}
                     	else if (rc.canBuildRobot(RobotType.SCOUT, unitHole.getDirection())) {
                     		rc.buildRobot(RobotType.SCOUT, unitHole.getDirection());
+                    		lastSoldier = rc.getRoundNum();
                     		unitsMade++;
                     	}
                     }
@@ -429,6 +464,16 @@ public strictfp class GardenerPlayer {
           		}
                 myHealth = rc.getHealth();
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
+                if (rc.hasMoved() == false) {
+                	notMoved++;
+                }
+                else {
+                	notMoved = 0;
+                }
+                if (notMoved > 10) {
+                	SharedUtils.tryMove(rc, SharedUtils.randomDirection());
+                	notMoved = 0;
+                }
                 Clock.yield();
 
             } catch (Exception e) {

@@ -14,7 +14,7 @@ public strictfp class SoldierPlayer {
     static Broadcaster broadcaster;
     static RobotController rc;
     static Random rnd = new Random();
-    static double attackerChance = 0.4;
+    static double attackerChance = 1.0;
 
     static void runSoldier(RobotController rcon) throws GameActionException {
         // System.out.println("I'm a KSTT soldier!");

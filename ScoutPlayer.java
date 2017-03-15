@@ -251,10 +251,10 @@ public strictfp class ScoutPlayer {
         RobotInfo robot = rc.senseRobot(targetId);
         boolean sameHP = robot.getHealth() == lastTargetHP;
         lastTargetHP = robot.getHealth();
-        if (SharedUtils.isNear(rc.getLocation(), robot.getLocation(), rc.getType().sensorRadius / 2)) {
-            // pick random direction to make it harder for the enemies to shoot the scout while killing the target robot
-            rc.move(SharedUtils.randomDirection());
-        } else if( rc.canMove(rc.getLocation().directionTo(robot.getLocation())) ) {
+       // if (SharedUtils.isNear(rc.getLocation(), robot.getLocation(), robot.getRadius() + 1.5F)) {
+            //pick random direction to make it harder for the enemies to shoot the scout while killing the target robot
+            //rc.move(SharedUtils.randomDirection());
+        /*} else*/ if( rc.canMove(rc.getLocation().directionTo(robot.getLocation())) ) {
             rc.move(rc.getLocation().directionTo(robot.getLocation()));
         } else if (allowTether || sameHP){
             Direction newDir = getDodgeDirection(rc, robot, dodgeDir);
