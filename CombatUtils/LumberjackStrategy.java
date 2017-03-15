@@ -44,7 +44,6 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
                 System.out.println("Lumberjack error");
             }
         }
-
         super.update();
     }
 
@@ -79,7 +78,7 @@ public class LumberjackStrategy extends AttackerCombatStrategy {
     protected RobotInfo chooseBestShootingTarget() {
         RobotInfo[] hittableOurRobots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS, rc.getTeam());
         RobotInfo[] hittableEnemyRobots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius + GameConstants.LUMBERJACK_STRIKE_RADIUS, enemy);
-        if (hittableOurRobots.length > 0) {
+        if (hittableOurRobots.length > 1) {
             return null; // "friendly-chopping"!!!
         } else if (hittableEnemyRobots.length > 0) {
             return hittableEnemyRobots[0]; // any robot will do

@@ -178,7 +178,7 @@ public strictfp abstract class BasicCombatStrategy {
 
         if (!hasDodged && !hasShotAtTarget) {
             // I am not in a fight, I can move as I wish
-        	if ((goal == null || !goal.isWithinDistance(rc.getLocation(), 5F))) {
+        	if (rc.getType() != RobotType.LUMBERJACK && (goal == null || !goal.isWithinDistance(rc.getLocation(), 3F))) { //TODO fix for lumberjack
             	if (goalChanged && rc.getRoundNum() - lastGoalChange > 10) {
             		goalChanged = false;
             		lastGoalChange = rc.getRoundNum();
